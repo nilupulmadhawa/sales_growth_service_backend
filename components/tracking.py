@@ -53,4 +53,23 @@ async def get_metrics(metric: str):
             (total,) = await cur.fetchone()
     return {metric: total}
 
-        
+
+@router.get("/metrics/trial-conversion-rate")
+async def get_trial_conversion_rate():
+    async with await get_db_connection() as conn:
+        async with conn.cursor() as cur:
+            # Example SQL query, adjust based on your actual database schema
+            await cur.execute("""
+                SELECT 
+                    MONTH(date_field) AS month,
+                    SUM(case when event_type = 'trial' then 1 else 0 end) AS total_trials,
+                    SUM(case when event_type = 'conversion' then 1 else 0 end) AS total_conversions
+                FROM 
+                    events_table
+                GROUP BY 
+                    MONTH(date_field)
+            """)
+            result = await cur.fetchall()
+            # Calculate conversion rate
+            conversion_rates = {row[0]: (row[2] / row[1] if row[1] > 0 else 0) for row in result}
+    return conversion_rates
