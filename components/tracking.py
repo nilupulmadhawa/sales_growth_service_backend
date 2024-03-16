@@ -54,22 +54,48 @@ async def get_metrics(metric: str):
     return {metric: total}
 
 
-@router.get("/metrics/trial-conversion-rate")
-async def get_trial_conversion_rate():
+@router.post("/update-conversion-rates/")
+async def update_conversion_rates():
     async with await get_db_connection() as conn:
         async with conn.cursor() as cur:
-            # Example SQL query, adjust based on your actual database schema
+            # Calculate conversion rates
             await cur.execute("""
                 SELECT 
-                    MONTH(date_field) AS month,
-                    SUM(case when event_type = 'trial' then 1 else 0 end) AS total_trials,
-                    SUM(case when event_type = 'conversion' then 1 else 0 end) AS total_conversions
+                    DATE_FORMAT(event_time, '%Y-%m') AS month,
+                    SUM(event_type IN ('view', 'cart')) AS total_trials,
+                    SUM(event_type = 'purchase') AS total_conversions,
+                    (SUM(event_type = 'purchase') / SUM(event_type IN ('view', 'cart'))) * 100 AS conversion_rate
                 FROM 
-                    events_table
+                    events
                 GROUP BY 
-                    MONTH(date_field)
+                    month
+                ORDER BY 
+                    month;
             """)
-            result = await cur.fetchall()
-            # Calculate conversion rate
-            conversion_rates = {row[0]: (row[2] / row[1] if row[1] > 0 else 0) for row in result}
-    return conversion_rates
+            conversion_rates = await cur.fetchall()
+            
+            # Insert conversion rates into conversion_rates table
+            for month, total_trials, total_conversions, conversion_rate in conversion_rates:
+                await cur.execute("""
+                    INSERT INTO conversion_rates (month, total_trials, total_conversions, conversion_rate)
+                    VALUES (%s, %s, %s, %s)
+                    ON DUPLICATE KEY UPDATE
+                    total_trials = VALUES(total_trials),
+                    total_conversions = VALUES(total_conversions),
+                    conversion_rate = VALUES(conversion_rate)
+                """, (month, total_trials, total_conversions, conversion_rate))
+                await conn.commit()
+    
+    return {"message": "Conversion rates updated successfully"}
+
+@router.get("/conversion-rates/")
+async def get_conversion_rates():
+    async with await get_db_connection() as conn:
+        async with conn.cursor(aiomysql.DictCursor) as cur:
+            await cur.execute("""
+                SELECT month, total_trials, total_conversions, conversion_rate
+                FROM conversion_rates
+                ORDER BY month;
+            """)
+            rates = await cur.fetchall()
+    return rates
