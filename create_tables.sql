@@ -45,3 +45,12 @@ CREATE TABLE IF NOT EXISTS clicks (
     FOREIGN KEY (user_id) REFERENCES users(user_id),
     FOREIGN KEY (product_id) REFERENCES products(product_id)
 );
+
+CREATE TABLE IF NOT EXISTS conversion_rates (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    month VARCHAR(7),
+    total_trials INT,
+    total_conversions INT,
+    conversion_rate DECIMAL(10, 2)
+);
+
