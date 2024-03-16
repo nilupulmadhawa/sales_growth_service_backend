@@ -3,6 +3,8 @@ import pickle
 from pydantic import BaseModel
 import pandas as pd
 from surprise import Reader, Dataset
+import aiomysql
+import asyncio
 
 app = FastAPI()
 
@@ -65,3 +67,58 @@ async def get_recommendations(user_input: UserInput):
 
     return {"recommendations": recommendations}
 
+
+class Metrics(BaseModel):
+    impressions: int
+    clicks: int
+
+# Example data
+metrics_data = Metrics(impressions=3450, clicks=7890)
+
+@app.get("/metrics/impressions")
+async def get_impressions():
+    return {"impressions": metrics_data.impressions}
+
+@app.get("/metrics/clicks")
+async def get_clicks():
+    return {"clicks": metrics_data.clicks}
+
+
+# Database connection details
+DB_CONFIG = {
+    'host': 'localhost',
+    'port': 3306,
+    'user': 'your_username',
+    'password': 'your_password',
+    'db': 'recommendation_system',
+}
+
+async def get_db_connection():
+    conn = await aiomysql.connect(**DB_CONFIG)
+    return conn
+
+@app.post("/track/impression")
+async def track_impression():
+    async with await get_db_connection() as conn:
+        async with conn.cursor() as cursor:
+            await cursor.execute("INSERT INTO impressions (created_at) VALUES (CURRENT_TIMESTAMP)")
+            await conn.commit()
+    return {"message": "Impression tracked"}
+
+@app.post("/track/click")
+async def track_click():
+    async with await get_db_connection() as conn:
+        async with conn.cursor() as cursor:
+            await cursor.execute("INSERT INTO clicks (created_at) VALUES (CURRENT_TIMESTAMP)")
+            await conn.commit()
+    return {"message": "Click tracked"}
+
+@app.get("/metrics")
+async def get_metrics():
+    async with await get_db_connection() as conn:
+        async with conn.cursor() as cursor:
+            await cursor.execute("SELECT COUNT(*) FROM impressions")
+            impressions_count = await cursor.fetchone()
+            await cursor.execute("SELECT COUNT(*) FROM clicks")
+            clicks_count = await cursor.fetchone()
+    return {"impressions": impressions_count[0], "clicks": clicks_count[0]}
