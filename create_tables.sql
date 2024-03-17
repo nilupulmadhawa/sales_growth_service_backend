@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS products (
     product_id INT AUTO_INCREMENT PRIMARY KEY,
     product_name VARCHAR(255),
     category_code VARCHAR(255),
+    brand VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -22,6 +23,7 @@ CREATE TABLE IF NOT EXISTS events (
     product_id INT,
     event_type ENUM('view', 'cart', 'purchase', 'impression', 'click'),
     event_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    state BOOLEAN DEFAULT 0,
     FOREIGN KEY (user_id) REFERENCES users(user_id),
     FOREIGN KEY (product_id) REFERENCES products(product_id)
 );
@@ -45,12 +47,3 @@ CREATE TABLE IF NOT EXISTS clicks (
     FOREIGN KEY (user_id) REFERENCES users(user_id),
     FOREIGN KEY (product_id) REFERENCES products(product_id)
 );
-
-CREATE TABLE IF NOT EXISTS conversion_rates (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    month VARCHAR(7),
-    total_trials INT,
-    total_conversions INT,
-    conversion_rate DECIMAL(10, 2)
-);
-

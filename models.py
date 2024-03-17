@@ -9,3 +9,8 @@ class UserInput(BaseModel):
 class Metrics(BaseModel):
     impressions: int
     clicks: int
+
+class Event(BaseModel):
+    user_id: int
+    product_id: int
+    event_type: str
