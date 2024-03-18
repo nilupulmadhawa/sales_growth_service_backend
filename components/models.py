@@ -16,3 +16,4 @@ class OptimizeInput(BaseModel):
     product_category: str
     cost: float
     date: date
+

@@ -17,12 +17,13 @@ read_data = pd.read_csv('price_optimization/product_price_dataset.csv')
 def get_price_optimization(product: str, product_category: str, cost: float, date: date) -> float:
     
     data = read_data
-    
+    maximum_profit_margin = 20
+    minimum_profit_margin = 10
     data['Order_Date'] = pd.to_datetime(data['Order_Date'], errors='coerce')
     data['Product_Category'] = data['Product_Category'].fillna('No Category')
 
-    data['maximum_profit_margin'] = '20'
-    data['minimum_profit_margin'] = '10'
+    data['maximum_profit_margin'] = maximum_profit_margin
+    data['minimum_profit_margin'] = minimum_profit_margin
 
     data['day_of_week'] = data['Order_Date'].dt.day_name()
     data['month'] = data['Order_Date'].dt.month_name()
@@ -75,7 +76,9 @@ def get_price_optimization(product: str, product_category: str, cost: float, dat
     sample_df = pd.get_dummies(sample_df)
     
     prediction = model.predict(sample_df)
-    return prediction[0][0]
+
+   
+    return  cost + cost * (maximum_profit_margin +((maximum_profit_margin - minimum_profit_margin )* prediction[0][0] /100))/100
 
 @router.post("/", response_model=float)  # More specific response 
 def get_price_optimizations(optimize_input: OptimizeInput):

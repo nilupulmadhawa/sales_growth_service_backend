@@ -4,13 +4,15 @@ from fastapi import FastAPI
 from components.recommendations import router as recommendations_router
 from components.tracking import router as tracking_router
 from components.price_optimization import router as price_router
+from components.products import router as products_router
 
 app = FastAPI(title="Product Recommendation Service", version="1.0")
 
 # Include routers from different components
 app.include_router(recommendations_router, prefix="/api/v1/recommendations", tags=["Recommendations"])
 app.include_router(tracking_router, prefix="/api/v1/tracking", tags=["Tracking"])
-app.include_router(price_router, prefix="/api/v1/optimize", tags=["APIs"])
+app.include_router(price_router, prefix="/api/v1/optimize", tags=["Optimize"])
+app.include_router(products_router, prefix="/api/v1/products", tags=["Products"])
 
 
 # Include the router that has the metrics endpoints
