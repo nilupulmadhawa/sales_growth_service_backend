@@ -63,6 +63,7 @@ async def get_conversion_rates():
            await cur.execute("""
                 SELECT 
                     DATE_FORMAT(event_time, '%Y-%m') AS month,
+                    MONTHNAME(event_time) AS month_name,
                     SUM(event_type IN ('view', 'cart')) AS total_trials,
                     SUM(event_type = 'purchase') AS total_conversions,
                     (SUM(event_type = 'purchase') / SUM(event_type IN ('view', 'cart'))) * 100 AS conversion_rate
