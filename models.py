@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 from datetime import datetime
+from typing import Optional
+
 
 class UserInput(BaseModel):
     age: float
@@ -28,3 +30,15 @@ class CombinedData(BaseModel):
     
     class Config:
         orm_mode = True
+
+class UserDemographic(BaseModel):
+    user_id: Optional[int] = None
+    age: Optional[int] = None
+    gender: Optional[str] = None
+    location: Optional[str] = None
+
+class UserUpdate(BaseModel):
+    user_id: int
+    age: int
+    gender: str
+    location: str
