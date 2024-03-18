@@ -33,6 +33,14 @@ async def get_user_demographics(user_id: int):
     user_data = await fetch_user_demographic(user_id)
     return user_data
 
+async def insert_brands(user_id: int, brands: list):
+    query = "INSERT INTO brands (user_id, brand) VALUES (%s, %s)"
+    async with await get_db_connection() as conn:
+        async with conn.cursor() as cur:
+            for brand in brands:
+                await cur.execute(query, (user_id, brand))
+            await conn.commit()
+
 
 @router.put("/demographics/update/{user_id}/")
 async def update_user_demographics(user_id: int, user_update: UserUpdate):
@@ -50,5 +58,8 @@ async def update_user_demographics(user_id: int, user_update: UserUpdate):
                 await cur.execute("UPDATE users SET age = %s, gender = %s, location = %s WHERE user_id = %s",
                                   (user_update.age, user_update.gender, user_update.location, user_id))
             await conn.commit()
-    return {"message": "User updated successfully"}
+
+            await insert_brands(user_id, user_update.brands)
+            
+    return {"message": "User and brands updated successfully"}
 

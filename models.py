@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional
 
@@ -42,3 +42,4 @@ class UserUpdate(BaseModel):
     age: int
     gender: str
     location: str
+    brands: list = Field(default_factory=list)
