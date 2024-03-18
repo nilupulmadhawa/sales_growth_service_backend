@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS events (
     event_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id VARCHAR(255),
     product_id INT,
-    event_type ENUM('view', 'cart', 'purchase', 'impression', 'click'),
+    event_type ENUM('view', 'cart', 'purchase'),
     event_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(user_id)
 );
