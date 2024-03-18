@@ -1,57 +1,88 @@
 import pandas as pd
-import pickle
-from surprise import Reader, Dataset
+from keras.models import load_model
 from fastapi import APIRouter
-from models import UserInput  # Adjust the import path as necessary
+from .models import OptimizeInput  # Adjust the import path as necessary
+from datetime import date, datetime
+import logging
 
 router = APIRouter()
 
-# Load the recommendation model and data
-with open("recommendation-model/recommendation_model.pkl", "rb") as f:
-    model = pickle.load(f)
+logger = logging.getLogger(__name__)
 
-data = pd.read_csv('recommendation-model/multi-category-dataset-recommendation.csv')
+with open("price_optimization/price_optimization.h5", "rb") as f:
+    model = load_model("price_optimization/price_optimization.h5") 
 
-def map_event_type(event_type: str) -> float:
-    mapping = {'view': 1.0, 'cart': 2.0, 'purchase': 3.0}
-    return mapping.get(event_type, 0.0)
+read_data = pd.read_csv('price_optimization/product_price_dataset.csv')
 
-def collaborative_filtering_recommendation(age: float, gender: str, location: str, num_recommendations: int = 5):
-    df = data.dropna(subset=['category_code']).copy()
-    df['product_name'] = df['category_code'].str.split('.').str[-1]
-    df['event_type_binary'] = df['event_type'].apply(map_event_type)
-    df['pseudo_user_id'] = df['user_id'].astype(str)
+def get_price_optimization(product: str, product_category: str, cost: float, date: date) -> float:
+    
+    data = read_data
+    
+    data['Order_Date'] = pd.to_datetime(data['Order_Date'], errors='coerce')
+    data['Product_Category'] = data['Product_Category'].fillna('No Category')
 
-    # Filter user_data based on the provided user input
-    user_data = df[(df['age'] == age) & (df['gender'].str.lower() == gender.lower()) & (df['location'].str.lower() == location.lower())]
+    data['maximum_profit_margin'] = '20'
+    data['minimum_profit_margin'] = '10'
 
-    reader = Reader(rating_scale=(1, 3))
-    dataset = Dataset.load_from_df(user_data[['pseudo_user_id', 'product_name', 'event_type_binary']], reader)
+    data['day_of_week'] = data['Order_Date'].dt.day_name()
+    data['month'] = data['Order_Date'].dt.month_name()
 
-    trainset = dataset.build_full_trainset()
-    testset = trainset.build_anti_testset()
+    # def week_of_month(dt):
+    #     first_day = dt.replace(day=1)
+    #     dom = dt.day
+    #     adjusted_dom = dom + first_day.weekday()
+    #     return int(np.ceil(adjusted_dom / 7))
 
-    predictions = model.test(testset)
+    def week_of_month(dt):
+        first_day = dt.replace(day=1)
+        first_weekday = first_day.weekday()
+        offset = (dt.day + first_weekday - 1) // 7
+        return offset + 1
 
-    # Process predictions to generate recommendations
-    unique_recommendations = set()
-    recommendations_list = []
+    data['week_of_month'] = data['Order_Date'].apply(week_of_month)
 
-    for uid, iid, true_r, est, _ in sorted(predictions, key=lambda x: x.est, reverse=True):
-        if iid not in unique_recommendations:
-            unique_recommendations.add(iid)
-            recommendations_list.append(iid)
-        if len(recommendations_list) == num_recommendations:
-            break
+    data['cost'] = data['Sales'] - data['Profit']
 
-    return recommendations_list
+    data['order_count'] = data.groupby(['Order_Date','Product'])['Quantity'].transform('sum')
+    data['total_revenue_per_day'] =data['order_count'] * data['Sales']
 
-@router.post("/", response_model=list)  # Adjust endpoint as needed
-async def get_recommendations(user_input: UserInput):
-    recommendations = collaborative_filtering_recommendation(
-        age=user_input.age,
-        gender=user_input.gender,
-        location=user_input.location,
-        num_recommendations=user_input.num_recommendations
+
+    new_df = data.groupby(['Order_Date','Product_Category', 'Product','Sales', 'minimum_profit_margin','maximum_profit_margin','week_of_month','month','cost']).size().reset_index(name='order_count')
+
+    # Sort the DataFrame by 'Order_Date'
+    new_df.sort_values(by='Order_Date', inplace=True)
+
+    new_df['average_sales_per_week_of_month'] = new_df.groupby(['month','week_of_month'])['order_count'].transform('mean')
+
+    new_df['max'] = new_df.groupby(['week_of_month'])['average_sales_per_week_of_month'].transform('max')
+    new_df['min'] = new_df.groupby(['week_of_month'])['average_sales_per_week_of_month'].transform('min')
+    # Calculate 'demand' based on the grouped data
+
+    new_df['demand'] =( new_df['average_sales_per_week_of_month'] - new_df['min'])/ ( new_df['max'] - new_df['min'])*100
+    features = ['Product', 'Product_Category', 'cost', 'week_of_month','month']
+    x= new_df[features]
+    x = pd.get_dummies(x)
+    sample_input = {
+        'Product_'+product: 1,
+        'Product_Category_'+product_category: 1,
+        'cost': cost,
+        'week_of_month': week_of_month(date),
+        'month': 1
+    }
+    sample_df = pd.DataFrame([sample_input])
+
+    sample_df = sample_df.reindex(columns=x.columns, fill_value=0)
+    sample_df = pd.get_dummies(sample_df)
+    
+    prediction = model.predict(sample_df)
+    return prediction[0][0]
+
+@router.post("/", response_model=float)  # More specific response 
+def get_price_optimizations(optimize_input: OptimizeInput):
+    prediction = get_price_optimization(
+        product=optimize_input.product,
+        product_category=optimize_input.product_category,
+        cost=optimize_input.cost,
+        date=optimize_input.date
     )
-    return recommendations
+    return prediction 

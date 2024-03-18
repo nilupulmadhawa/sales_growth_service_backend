@@ -9,3 +9,9 @@ class UserInput(BaseModel):
 class Metrics(BaseModel):
     impressions: int
     clicks: int
+
+class OptimizeInput(BaseModel):
+    product: str
+    product_category: str
+    cost: float
+    date: any

@@ -10,9 +10,8 @@ app = FastAPI(title="Product Recommendation Service", version="1.0")
 # Include routers from different components
 app.include_router(recommendations_router, prefix="/api/v1/recommendations", tags=["Recommendations"])
 app.include_router(tracking_router, prefix="/api/v1/tracking", tags=["Tracking"])
-app.include_router(price_router, prefix="/api/v1/optimize", tags=["Tracking"])
+app.include_router(price_router, prefix="/api/v1/optimize", tags=["APIs"])
 
-app.include_router(recommendations_router, prefix="/api/v1/price", tags=["Recommendations"])
 
 # Include the router that has the metrics endpoints
 app.include_router(tracking_router)
