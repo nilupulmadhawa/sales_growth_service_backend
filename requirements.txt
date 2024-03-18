@@ -2,6 +2,6 @@ fastapi==0.95.1
 uvicorn==0.22.0
 scikit-surprise==1.0.2
 aiomysql==0.2.0
-keras==2.15.0
-tensorflow==2.15.0
+keras==3.0.5
+tensorflow==2.16.1
 numpy==1.25.2
