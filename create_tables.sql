@@ -1,6 +1,7 @@
 -- Create Users Table
 CREATE TABLE IF NOT EXISTS users (
-    user_id INT AUTO_INCREMENT PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id VARCHAR(255),
     age INT,
     gender VARCHAR(10),
     location VARCHAR(255),
@@ -22,7 +23,7 @@ CREATE TABLE IF NOT EXISTS products (
 -- Create Events Table
 CREATE TABLE IF NOT EXISTS events (
     event_id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT,
+    user_id VARCHAR(255),
     product_id INT,
     event_type ENUM('view', 'cart', 'purchase', 'impression', 'click'),
     event_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -32,7 +33,7 @@ CREATE TABLE IF NOT EXISTS events (
 -- Create Impressions Table
 CREATE TABLE IF NOT EXISTS impressions (
     impression_id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT,
+    user_id VARCHAR(255),
     product_id INT,
     impression_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(user_id)
@@ -41,7 +42,7 @@ CREATE TABLE IF NOT EXISTS impressions (
 -- Create Clicks Table
 CREATE TABLE IF NOT EXISTS clicks (
     click_id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT,
+    user_id VARCHAR(255),
     product_id INT,
     click_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(user_id)
