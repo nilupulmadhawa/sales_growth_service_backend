@@ -1,9 +1,0 @@
-fastapi==0.95.1 
-uvicorn==0.22.0
-scikit-surprise==1.1.3
-aiomysql==0.2.0
-keras==3.0.5
-tensorflow==2.16.1
-numpy==1.25.2
-sqlalchemy==2.0.28
-databases==0.9.0

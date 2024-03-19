@@ -1,12 +1,6 @@
 # sales_growth_service_backend
 
-# command for table creation
-# first install the package
-
-pip install databases[aiomysql]
+#command for table creation
 
 
-
-
- Get-Content create_tables.sql | mysql -u root -p quixellai_db
- 
+ Get-Content create_tables.sql | mysql -u root -p sgos_db
