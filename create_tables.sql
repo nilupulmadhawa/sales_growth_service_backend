@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
 -- Create Products Table
 CREATE TABLE IF NOT EXISTS products (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    product_id VARCHAR(255),
     product_name VARCHAR(255),
     product_category VARCHAR(255),
     product_Brand VARCHAR(255),
@@ -22,7 +23,7 @@ CREATE TABLE IF NOT EXISTS products (
 
 -- Create Events Table
 CREATE TABLE IF NOT EXISTS events (
-    event_id INT AUTO_INCREMENT PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     user_id VARCHAR(255),
     product_id INT,
     event_type ENUM('view', 'cart', 'purchase'),
@@ -58,5 +59,32 @@ CREATE TABLE IF NOT EXISTS brands (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id VARCHAR(255),
     brand VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- user preferences table
+CREATE TABLE IF NOT EXISTS user_preferences (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id VARCHAR(255),
+    product_id INT,
+    category VARCHAR(255),
+    product_name VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- sales table make all nullable
+CREATE TABLE IF NOT EXISTS sales (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id VARCHAR(255) NULL,
+    product_id VARCHAR(255),
+    product_name VARCHAR(255) NULL,
+    product_category VARCHAR(255) NULL,
+    cost DECIMAL(10, 2) NULL,
+    selling_price DECIMAL(10, 2),
+    margin DECIMAL(10, 2) NULL,
+    quantity INT,
+    amount DECIMAL(10, 2),
+    order_id VARCHAR(255),
+    order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
