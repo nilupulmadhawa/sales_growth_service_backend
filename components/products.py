@@ -17,6 +17,7 @@ sales_forecasting_router = APIRouter()
 
 
 class ProductBase(BaseModel):
+    product_id: str = Field(..., min_length=1) 
     product_name: str = Field(..., min_length=1) 
     product_category: str = Field(..., min_length=1)
     product_brand: str = Field(..., min_length=1)
@@ -29,6 +30,7 @@ class ProductCreate(ProductBase):
     pass  # All fields are required
 
 class ProductUpdate(ProductBase):
+    product_id: str | None = None
     product_name: str | None = None
     product_category: str | None = None
     product_brand: str | None = None
@@ -105,7 +107,6 @@ async def get_combined_sales() -> List[Dict[str, Any]]:
     }
 
     # Fetch predicted sales data
-    print(payload)
     predicted_sales_data = await get_predictions_sales(data=payload)
 
      # Combine actual and predicted sales
@@ -150,8 +151,8 @@ async def create_product(product: ProductCreate) -> Product:
     async with await get_db_connection() as conn:
         async with conn.cursor() as cursor:
             await cursor.execute(
-                "INSERT INTO products (product_name, product_category, product_brand, selling_price, cost, max_margin, min_margin) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                (product.product_name, product.product_category, product.product_brand, product.selling_price, product.cost, product.max_margin, product.min_margin)
+                "INSERT INTO products (product_id, product_name, product_category, product_brand, selling_price, cost, max_margin, min_margin) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                (product.product_id, product.product_name, product.product_category, product.product_brand, product.selling_price, product.cost, product.max_margin, product.min_margin)
             )
             last_row_id = cursor.lastrowid
             await conn.commit()

@@ -14,11 +14,11 @@ with open("price_optimization/price_optimization.h5", "rb") as f:
 
 read_data = pd.read_csv('price_optimization/product_price_dataset.csv')
 
-def get_price_optimization(product: str, product_category: str, cost: float, date: date) -> float:
+def get_price_optimization(product: str, product_category: str, cost: float, date: date,maxProfitMargin:float, minProfitMargin:float) -> float:
     
     data = read_data
-    maximum_profit_margin = 20
-    minimum_profit_margin = 10
+    maximum_profit_margin =maxProfitMargin
+    minimum_profit_margin =minProfitMargin
     data['Order_Date'] = pd.to_datetime(data['Order_Date'], errors='coerce')
     data['Product_Category'] = data['Product_Category'].fillna('No Category')
 
@@ -86,6 +86,8 @@ def get_price_optimizations(optimize_input: OptimizeInput):
         product=optimize_input.product,
         product_category=optimize_input.product_category,
         cost=optimize_input.cost,
-        date=optimize_input.date
+        date=optimize_input.date,
+        maxProfitMargin=optimize_input.maxProfitMargin,
+        minProfitMargin=optimize_input.minProfitMargin
     )
     return prediction 
