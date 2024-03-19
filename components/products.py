@@ -189,7 +189,7 @@ async def create_product(product: ProductCreate) -> Product:
             await cursor.close()
             return await get_product_by_id(last_row_id)
 
-async def get_all_products() -> List[Product]:
+async def get_all_products() :
     async with await get_db_connection() as conn:
         async with conn.cursor() as cursor:
             await cursor.execute("SELECT * FROM products")
@@ -223,7 +223,7 @@ async def delete_product(product_id: int) -> None:
         await conn.commit()
 
 # --- API Endpoints --- 
-@router.get("/")
+@router.get("/", response_model=List)
 async def list_products():
     return await get_all_products()
 

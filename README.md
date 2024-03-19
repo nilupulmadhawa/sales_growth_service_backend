@@ -9,4 +9,5 @@ pip install databases[aiomysql]
 
 
  Get-Content create_tables.sql | mysql -u root -p quixellai_db
- 
+
+
