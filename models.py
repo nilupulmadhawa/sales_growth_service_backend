@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional
+from datetime import date, datetime
 
 
 class UserInput(BaseModel):
@@ -48,7 +49,7 @@ class OptimizeInput(BaseModel):
     product: str
     product_category: str
     cost: float
-    date: any
+    date: date
 
 class Product(BaseModel):
     id: int
