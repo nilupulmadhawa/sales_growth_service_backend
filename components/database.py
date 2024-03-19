@@ -7,7 +7,7 @@ DB_CONFIG = {
     'port': 3306,
     'user': 'root',
     'db': 'quixellai_db',
-    'password': '123456789'
+    'password': 'S@ndu=1996'
 }
 
 app = FastAPI()

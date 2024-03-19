@@ -3,6 +3,8 @@ import aiomysql
 from typing import List
 import pytz
 
+from models import UserProductPreference, Product
+
 # Assuming DB_CONFIG and get_db_connection() are defined in your database module
 from .database import get_db_connection
 
@@ -13,8 +15,8 @@ async def fetch_combined_data(start_date: str = None, end_date: str = None):
     query = """
         SELECT 
             p.product_name, 
-            p.category_code, 
-            p.brand, 
+            p.product_category as category_code, 
+            p.product_Brand as brand, 
             u.age, 
             u.gender, 
             u.location, 
@@ -50,3 +52,43 @@ async def fetch_combined_data(start_date: str = None, end_date: str = None):
 async def combined_data_route():
     data = await fetch_combined_data()
     return data
+
+@router.post("/user-preference/")
+async def save_user_product_preference(preference: UserProductPreference):
+    query = "INSERT INTO user_preferences (user_id, product_id) VALUES (%s, %s)"
+    async with await get_db_connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(query, (preference.user_id, preference.product_id))
+            await conn.commit()
+    return {"message": "User preference saved successfully"}
+
+
+# get a category randomly from the database product table
+@router.get("/categories/")
+async def fetch_random_category():
+    query = """
+        SELECT DISTINCT product_category
+        FROM products
+        ORDER BY RAND()
+        LIMIT 1
+    """
+    async with await get_db_connection() as conn:
+        async with conn.cursor(aiomysql.DictCursor) as cur:
+            await cur.execute(query)
+            category = await cur.fetchone()
+            return category['category']
+
+@router.get("/products/{category}/", response_model=List[Product])
+async def fetch_random_products_by_category(category: str):
+    query = """
+        SELECT id, name, category, image_url
+        FROM products
+        WHERE category = %s
+        ORDER BY RAND()
+        LIMIT 3
+    """
+    async with await get_db_connection() as conn:
+        async with conn.cursor(aiomysql.DictCursor) as cur:
+            await cur.execute(query, (category,))
+            products = await cur.fetchall()
+            return [Product(**product) for product in products]
