@@ -9,8 +9,6 @@ from .database import get_db_connection
 
 router = APIRouter()
 
-
-
 async def fetch_user_demographic(user_id: int):
     query = """
         SELECT user_id, age, gender, location
@@ -62,4 +60,6 @@ async def update_user_demographics(user_id: int, user_update: UserUpdate):
             await insert_brands(user_id, user_update.brands)
             
     return {"message": "User and brands updated successfully"}
+
+
 

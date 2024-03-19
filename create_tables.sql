@@ -60,3 +60,30 @@ CREATE TABLE IF NOT EXISTS brands (
     brand VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- user preferences table
+CREATE TABLE IF NOT EXISTS user_preferences (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id VARCHAR(255),
+    product_id INT,
+    category VARCHAR(255),
+    product_name VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- sales table make all nullable
+CREATE TABLE IF NOT EXISTS sales (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id VARCHAR(255) NULL,
+    product_id VARCHAR(255),
+    product_name VARCHAR(255) NULL,
+    product_category VARCHAR(255) NULL,
+    cost DECIMAL(10, 2) NULL,
+    selling_price DECIMAL(10, 2),
+    margin DECIMAL(10, 2) NULL,
+    quantity INT,
+    amount DECIMAL(10, 2),
+    order_id VARCHAR(255),
+    order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

@@ -50,3 +50,12 @@ class OptimizeInput(BaseModel):
     cost: float
     date: any
 
+class Product(BaseModel):
+    id: int
+    name: str
+    category: str
+    image_url: str
+
+class UserProductPreference(BaseModel):
+    user_id: int
+    product_id: int
