@@ -2,7 +2,7 @@ import pandas as pd
 import pickle
 from surprise import Reader, Dataset
 from fastapi import APIRouter
-from models import UserInput  # Adjust the import path as necessary
+from .models import UserInput  
 
 router = APIRouter()
 

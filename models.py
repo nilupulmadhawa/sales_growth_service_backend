@@ -43,3 +43,10 @@ class UserUpdate(BaseModel):
     gender: str
     location: str
     brands: list = Field(default_factory=list)
+
+class OptimizeInput(BaseModel):
+    product: str
+    product_category: str
+    cost: float
+    date: any
+
