@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
 -- Create Products Table
 CREATE TABLE IF NOT EXISTS products (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    product_id VARCHAR(255),
     product_name VARCHAR(255),
     product_category VARCHAR(255),
     product_Brand VARCHAR(255),
@@ -22,7 +23,7 @@ CREATE TABLE IF NOT EXISTS products (
 
 -- Create Events Table
 CREATE TABLE IF NOT EXISTS events (
-    event_id INT AUTO_INCREMENT PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     user_id VARCHAR(255),
     product_id INT,
     event_type ENUM('view', 'cart', 'purchase'),
