@@ -55,3 +55,4 @@ async def get_recommendations(user_input: UserInput):
         num_recommendations=user_input.num_recommendations
     )
     return recommendations
+
