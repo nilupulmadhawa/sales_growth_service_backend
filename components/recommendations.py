@@ -2,7 +2,7 @@ import pandas as pd
 import pickle
 from surprise import Reader, Dataset
 from fastapi import APIRouter
-from .models import UserInput  
+from models import UserInput  # Adjust the import path as necessary
 
 router = APIRouter()
 
@@ -46,7 +46,7 @@ def collaborative_filtering_recommendation(age: float, gender: str, location: st
 
     return recommendations_list
 
-@router.post("/", response_model=list)  # Adjust endpoint as needed
+@router.post("/top-recommendations/", response_model=list)
 async def get_recommendations(user_input: UserInput):
     recommendations = collaborative_filtering_recommendation(
         age=user_input.age,
