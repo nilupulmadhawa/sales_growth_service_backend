@@ -137,6 +137,37 @@ async def get_combined_sales() -> List[Dict[str, Any]]:
         })
 
     return combined_sales
+
+######### Data model for sales by product category
+class CategorySales(BaseModel):
+    product_category: str
+    total_sales: float
+
+# Endpoint for fetching sales by product category
+@sales_forecasting_router.get("/category-sales", response_model=List[CategorySales])
+async def get_sales_by_category() -> List[Dict[str, Any]]:
+    async with await get_db_connection() as conn:
+        async with conn.cursor(aiomysql.DictCursor) as cursor:
+            query = """
+            SELECT 
+                product_category,
+                SUM(amount) AS total_sales
+            FROM 
+                sales
+            GROUP BY 
+                product_category
+            """
+            await cursor.execute(query)
+            result = await cursor.fetchall()
+            # Convert Decimal to float for JSON serialization and format the response
+            formatted_result = [
+                {
+                    "product_category": record['product_category'],
+                    "total_sales": float(record['total_sales'])
+                } 
+                for record in result if record['total_sales'] is not None
+            ]
+            return formatted_result
 ########################################
 
 async def get_product_by_id(product_id: int) -> Optional[Product]:
