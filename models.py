@@ -3,12 +3,15 @@ from datetime import datetime
 from typing import Optional
 from datetime import date, datetime
 
+class UserDemo(BaseModel):
+    user_id: str
+    num_recommendations: int = 5
 
 class UserInput(BaseModel):
+    user_id: str
     age: float
     gender: str
     location: str
-    num_recommendations: int = 5
 
 class Metrics(BaseModel):
     impressions: int
