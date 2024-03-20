@@ -9,7 +9,7 @@ from .database import get_db_connection
 
 router = APIRouter()
 
-async def fetch_user_demographic(user_id: int):
+async def fetch_user_demographic(user_id: str):
     query = """
         SELECT user_id, age, gender, location
         FROM users
@@ -27,21 +27,22 @@ async def fetch_user_demographic(user_id: int):
                 return UserDemographic()
 
 @router.get("/demographics/{user_id}/", response_model=UserDemographic)
-async def get_user_demographics(user_id: int):
+async def get_user_demographics(user_id: str):
     user_data = await fetch_user_demographic(user_id)
     return user_data
 
-async def insert_brands(user_id: int, brands: list):
+async def insert_brands(user_id: str, brands: list):
     query = "INSERT INTO brands (user_id, brand) VALUES (%s, %s)"
     async with await get_db_connection() as conn:
         async with conn.cursor() as cur:
             for brand in brands:
                 await cur.execute(query, (user_id, brand))
             await conn.commit()
+            return True
 
 
 @router.put("/demographics/update/{user_id}/")
-async def update_user_demographics(user_id: int, user_update: UserUpdate):
+async def update_user_demographics(user_id: str, user_update: UserUpdate):
     async with await get_db_connection() as conn:
         async with conn.cursor() as cur:
             # Check if the user already exists
@@ -55,9 +56,9 @@ async def update_user_demographics(user_id: int, user_update: UserUpdate):
                 # Update existing user
                 await cur.execute("UPDATE users SET age = %s, gender = %s, location = %s WHERE user_id = %s",
                                   (user_update.age, user_update.gender, user_update.location, user_id))
-            await conn.commit()
 
             await insert_brands(user_id, user_update.brands)
+            await conn.commit()
             
     return {"message": "User and brands updated successfully"}
 
