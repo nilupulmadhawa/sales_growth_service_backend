@@ -6,7 +6,7 @@ DB_CONFIG = {
     'host': 'localhost',
     'port': 3306,
     'user': 'root',
-    'password': '123',
+    'password': 'S@ndu=1996',
     'db': 'quixellai_db'
 }
 

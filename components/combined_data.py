@@ -50,7 +50,7 @@ async def fetch_combined_data(start_date: str = None, end_date: str = None):
 
 @router.get("/combined-data/", response_model=List)
 async def combined_data_route():
-    data = await fetch_cxoxmbined_data()
+    data = await fetch_combined_data()
     return data
 
 @router.post("/user-preference/")
