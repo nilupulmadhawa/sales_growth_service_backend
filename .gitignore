@@ -29,3 +29,7 @@ archive.zip
 
 # macOS
 .DS_Store
+
+recommendation-model/events.csv
+recommendation-model/products.csv
+recommendation-model/users.csv
