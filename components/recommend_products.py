@@ -22,12 +22,10 @@ model = joblib.load('recommendation-model/recommendation_hybrid_model.pkl')
 
 # Define feature indices (update based on your feature setup)
 feature_indices = {
-    'gender_M': 0,
-    'gender_F': 1,
-    'age_25': 2,
-    'location_Daegu': 3,
-    'brand_Perry_Ellis': 4,
-    # Add other feature indices here...
+    'gender_male': 0,
+    'age_25': 1,
+    'location_Daegu': 2,
+    'brand_Perry_Ellis': 3,
 }
 num_features = len(feature_indices)
 
@@ -74,7 +72,7 @@ def create_feature_vector(user_demo_details):
     for detail in user_demo_details:
         age, gender, location, brand = detail['age'], detail['gender'], detail['location'], detail['brand']
         age_feature = f'age_{age}'
-        gender_feature = f'gender_{gender.lower()}'
+        gender_feature = 'gender_male' if gender.lower() == 'm' else 'gender_female'
         location_feature = f'location_{location}'
         brand_feature = f'brand_{brand}'
         
@@ -87,7 +85,7 @@ def create_feature_vector(user_demo_details):
         if brand_feature in feature_indices:
             feature_vector[feature_indices[brand_feature]] = 1
 
-    return csr_matrix(feature_vector)
+    return csr_matrix([feature_vector])
 
 def preprocess_data(users_df, products_df, events_df):
     event_type_weights = {
@@ -116,9 +114,6 @@ def preprocess_data(users_df, products_df, events_df):
         user_features=(f"{row['gender']}_{row['age_group']}_{row['location']}" for index, row in users_df.iterrows()),
         item_features=(f"{row['product_category']}_{row['product_Brand']}_{row['department']}" for index, row in products_df.iterrows())
     )
-
-    # logger.info(f"User mappings after fit: {dataset.mapping()[0]}")
-    # logger.info(f"Item mappings after fit: {dataset.mapping()[2]}")
 
     (interactions_matrix, weights_matrix) = dataset.build_interactions(
         (row['user_id'], row['product_id'], row['event_weight'])
@@ -156,10 +151,6 @@ async def recommend_products(user_id: str):
         all_users_data = await get_all_users_data(conn)  # Fetch all users
         users_df = pd.DataFrame(all_users_data)
 
-        # Log the user IDs being processed
-        # logger.info(f"User ID requested: {user_id}")
-        # logger.info(f"User IDs in dataset: {users_df['id'].tolist()}")
-
         # Preprocess data
         dataset, user_features, item_features, interactions_matrix, weights_matrix = preprocess_data(users_df, products_df, events_df)
 
@@ -173,9 +164,14 @@ async def recommend_products(user_id: str):
         user_x = dataset.mapping()[0][user_id_int]
 
         scores = model.predict(user_x, np.arange(dataset.interactions_shape()[1]), user_features=user_features, item_features=item_features)
-        top_items_indices = np.argsort(-scores)[:10]
+        top_items_indices = np.argsort(-scores)[:20]
         top_item_ids = [dataset.mapping()[2][i] for i in top_items_indices]
-        top_items_details = products_df[products_df['id'].isin(top_item_ids)][['id', 'product_name']].to_dict(orient='records')
+        
+        # Filter products based on user's gender
+        user_gender = 'men' if user_data[0]['gender'].lower() == 'm' else 'women'
+        filtered_top_item_ids = [id for id in top_item_ids if products_df.loc[products_df['id'] == id, 'department'].values[0].lower() == user_gender]
+
+        top_items_details = [{'id': id, 'product_name': products_df.loc[products_df['id'] == id, 'product_name'].values[0]} for id in filtered_top_item_ids]
 
         return top_items_details
 
