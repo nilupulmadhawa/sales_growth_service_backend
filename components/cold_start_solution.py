@@ -6,8 +6,25 @@ from scipy.sparse import csr_matrix
 from typing import List
 from lightfm.data import Dataset
 from .database import get_db_connection
+import logging
 
 router = APIRouter()
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Load model
+model = joblib.load('recommendation-model/recommendation_hybrid_model.pkl')
+
+# Define the feature indices and total number of features
+feature_indices = {
+    'gender_male': 0,
+    'age_25': 1,
+    'location_Daegu': 2,
+    'brand_Perry_Ellis': 3
+}
+num_features = 100  # Ensure this matches your model's feature setup
 
 # Preprocessing
 event_type_weights = {
@@ -130,28 +147,24 @@ async def recommend_products(user_id: str):
 
     user_features_csr = create_feature_vector(user_demo_details)
     
-    # Get user ID mapping
-    user_mapping = {v: k for k, v in dataset.mapping()[0].items()}
-    user_index = user_mapping[int(user_id)]
+    user_mapping = dataset.mapping()[0]
+    item_mapping = dataset.mapping()[2]
 
-    num_items = item_features.shape[0]  # Assuming item_features contains all items
-    user_predictions = model.predict(user_index, np.arange(num_items), user_features=user_features, item_features=item_features)
+    if int(user_id) in user_mapping:
+        user_index = user_mapping[int(user_id)]
+        user_predictions = model.predict(user_index, np.arange(item_features.shape[0]), user_features=user_features, item_features=item_features)
+        logger.info(f"Existing user {user_id} found. Predictions calculated.")
+    else:
+        user_predictions = model.predict(0, np.arange(item_features.shape[0]), user_features=user_features_csr, item_features=item_features)
+        logger.info(f"New user {user_id}. Cold start predictions calculated.")
 
     top_items_indices = np.argsort(-user_predictions)[:20]
-    top_item_ids = [dataset.mapping()[2][i] for i in top_items_indices]
-    top_items_details = [{'id': id, 'product_name': products_df.loc[products_df['id'] == id, 'product_name'].values[0]} for id in top_item_ids]
+    top_item_ids = [item_mapping[i] for i in top_items_indices]
+
+    # Filter products based on user's gender
+    user_gender = 'men' if user_demo_details[0][1].lower() == 'm' else 'women'
+    filtered_top_item_ids = [id for id in top_item_ids if products_df.loc[products_df['id'] == id, 'department'].values[0].lower() == user_gender]
+
+    top_items_details = [{'id': id, 'product_name': products_df.loc[products_df['id'] == id, 'product_name'].values[0]} for id in filtered_top_item_ids]
 
     return top_items_details
-
-# Load model
-model = joblib.load('recommendation-model/recommendation_hybrid_model.pkl')
-
-# Define the feature indices and total number of features
-feature_indices = {
-    'gender_M': 0,
-    'gender_F': 1,
-    'age_25': 2,
-    'location_Daegu': 3,
-    'brand_Perry_Ellis': 4,
-}
-num_features = len(feature_indices)
