@@ -46,38 +46,12 @@ async def get_recommendations(user_input: UserDemo, model: LightFM = Depends(get
         raise HTTPException(status_code=503, detail="Model is not available")
     return await recommendation(user_input.user_id, user_input.num_recommendations, model)
 
-# Modification in the recommendation function to ensure it handles user mapping not found
 async def recommendation(user_id: int, num_recommendations: int, model: LightFM):
     conn = await get_db_connection()
-    try:
-        user_data_result = await fetch_users(user_id, conn)
-        if not user_data_result:
-            raise HTTPException(status_code=404, detail="User data not found")
+    
+                              
+  
 
-        dataset, interactions_matrix, weights_matrix, user_features, item_features = await load_data(conn)
-
-        # Convert user_id to string if not already, to match dataset fitting
-        user_id_str = str(user_id)
-        user_x = dataset.mapping()[0].get(user_id_str)
-        if user_x is None:
-            raise HTTPException(status_code=404, detail="User mapping not found")
-
-        scores = model.predict(user_x, np.arange(dataset.interactions_shape()[1]), user_features=user_features, item_features=item_features)
-        top_items = np.argsort(-scores)[:num_recommendations]
-        
-        # Fetch known positives for the user
-        known_positives = await fetch_known_positives(user_id, conn)
-        
-        # Return both top recommendations and known positives
-        top_recommendations = [dataset.mapping()[2][i] for i in top_items]
-        known_positives_list = [row['product_id'] for row in known_positives]
-        
-        return {
-            "top_recommendations": top_recommendations,
-            "known_positives": known_positives_list
-        }
-    finally:
-        conn.close()
 
 async def fetch_known_positives(user_id, conn):
     async with conn.cursor(aiomysql.DictCursor) as cursor:
@@ -141,19 +115,12 @@ def fit_dataset(users_df, products_df, events_df):
     user_ids = users_df['user_id'].astype(str)._append(events_df['user_id'].astype(str)).unique()
     item_ids = products_df['product_id'].astype(str)._append(events_df['product_id'].astype(str)).unique()
 
-    # Fit dataset with all user and item IDs
     dataset.fit(
         users=user_ids,
-        items=item_ids,
-        user_features=user_features,
-        item_features=item_features
+        items=item_ids
     )
 
-    # Check and fit missing item IDs
-    missing_item_ids = set(predict_item_ids) - set(dataset.mapping()[2].keys())
-    if missing_item_ids:
-        dataset.fit_partial(items=list(missing_item_ids))
-
+    print("Number of users:", dataset.model_dimensions()[0])
     return dataset
 
 

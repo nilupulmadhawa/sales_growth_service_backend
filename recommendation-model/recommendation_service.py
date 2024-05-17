@@ -54,13 +54,17 @@ users_df['age_group'] = pd.cut(users_df['age'], bins=[0, 18, 25, 35, 45, 55, 65,
 print(filtered_events.head())
 print(users_df.head())
 
-# Prepare the dataset
+from lightfm.data import Dataset
+
+# Initialize the dataset
 dataset = Dataset()
+
+# Fit the dataset with the user IDs, item IDs, and declare the features to use
 dataset.fit(
     users=(x for x in users_df['id']),
     items=(x for x in products_df['id']),
     user_features=(f"{row['gender']}_{row['age_group']}_{row['state']}" for index, row in users_df.iterrows()),
-    item_features=(f"{row['category']}_{row['brand']}" for index, row in products_df.iterrows())
+    item_features=(f"{row['category']}_{row['brand']}_{row['department']}" for index, row in products_df.iterrows())
 )
 
 (interactions_matrix, weights_matrix) = dataset.build_interactions(
@@ -74,8 +78,8 @@ user_features = dataset.build_user_features(
 )
 
 item_features = dataset.build_item_features(
-    (row['id'], [f"{row['category']}_{row['brand']}"])
-    for index, row in products_df[products_df['id'].isin(filtered_events['product_id'])].iterrows()
+    (row['id'], [f"{row['category']}_{row['brand']}_{row['department']}"])
+    for index, row in products_df.iterrows()
 )
 
 import matplotlib.pyplot as plt
@@ -157,6 +161,7 @@ for epoch in range(num_epochs):
             patience_counter += 1
             if patience_counter >= patience or current_gap > 0.05:
                 print(f"Early stopping triggered due to gap exceeding {best_gap} or no improvement")
+                joblib.dump(model, '/content/recommendation_hybrid_model.pkl')
                 break
 
 # Final evaluation at the end of training
@@ -183,7 +188,7 @@ user_id = 1
 recommended_products = sample_recommendation(model, user_id, user_features, item_features, dataset)
 print(f'Recommended product IDs for user {user_id}: {recommended_products}')
 
-joblib.dump(model, 'recommendation_hybrid_model.pkl')
+joblib.dump(model, 'recommend_model.pkl')
 
 plt.figure(figsize=(12, 6))
 plt.subplot(121)
@@ -204,3 +209,172 @@ plt.legend()
 
 plt.tight_layout()
 plt.show()
+
+model = joblib.load('recommendation_hybrid_model.pkl')
+test_prediction = model.predict(0, np.arange(10), user_features=user_features, item_features=item_features)
+print(test_prediction)
+
+# Check if model can predict without error
+try:
+    test_prediction = model.predict(0, np.arange(10), user_features=user_features, item_features=item_features)
+    print("Prediction successful:", test_prediction)
+except Exception as e:
+    print("Error during prediction:", str(e))
+
+def similar_items(item_id, model, item_features, N=10):
+    # Get item representations (biases and features)
+    item_bias, item_representations = model.get_item_representations(features=item_features)
+    # Compute cosine similarity
+    target_item_representation = item_representations[item_id]
+    scores = item_representations.dot(target_item_representation)
+    top_indices = np.argsort(-scores)[:N]
+    return top_indices
+
+# Example of finding similar items
+item_id = 13842
+similar_ids = similar_items(item_id, model, item_features)
+print("Similar Items to Item ID 10:", similar_ids)
+
+def similar_users(user_id, model, user_features, N=10):
+    user_bias, user_representations = model.get_user_representations(features=user_features)
+    target_user_representation = user_representations[user_id]
+    scores = user_representations.dot(target_user_representation)
+    top_indices = np.argsort(-scores)[:N]
+    return top_indices
+
+# Example of finding similar items
+user_id = 39
+similar_ids = similar_users(user_id, model, user_features)
+print("Similar users:", similar_ids)
+
+def generate_recommendations(model, user_id, user_features, item_features, dataset, products_df, num_items=10):
+    user_x = dataset.mapping()[0][user_id]
+    scores = model.predict(user_x, np.arange(dataset.interactions_shape()[1]), user_features=user_features, item_features=item_features)
+    top_items_indices = np.argsort(-scores)[:num_items]
+    top_items_ids = [dataset.mapping()[2][i] for i in top_items_indices]
+    # Get item names or other details from products_df
+    top_items_details = products_df[products_df['id'].isin(top_items_ids)][['id', 'name']]
+    return top_items_details
+
+# Example of finding similar items
+user_id = 39 # You need to replace this with a valid item ID from your dataset
+recommendations = generate_recommendations(model, user_id, user_features, item_features, dataset,products_df, num_items=10)
+print(recommendations)
+
+"""Solution for Cold Start Problem"""
+
+from scipy.sparse import csr_matrix
+
+# Define user features as a dictionary or similar structure
+features_dict = {
+    'gender_male': 1,
+    'age_25': 1,
+    'location_Daegu': 1,
+    'brand_Perry_Ellis': 1
+}
+
+# Assuming the total number of features is known and indexed
+num_features = 100  # Adjust this to the actual number of different feature tokens you have
+feature_indices = {
+    'gender_male': 0,
+    'age_25': 1,
+    'location_Daegu': 2,
+    'brand_Perry_Ellis': 3
+}
+
+# Create feature vector
+feature_vector = [0] * num_features
+for feature, index in feature_indices.items():
+    if feature in features_dict:
+        feature_vector[index] = features_dict[feature]
+
+# Convert to CSR matrix
+user_features_csr = csr_matrix(feature_vector)
+
+# Load the model
+model = joblib.load('recommendation_hybrid_model.pkl')
+
+# Predicting with a manually created CSR matrix
+num_items = dataset.interactions_shape()[1]  # Number of items
+new_user_predictions = model.predict(0, np.arange(num_items), user_features=user_features_csr, item_features=item_features)
+
+# Output the predictions
+print("Predictions:", new_user_predictions)
+
+import numpy as np
+import joblib
+
+# Load the model
+model = joblib.load('recommendation_hybrid_model.pkl')
+
+# Predicting with a manually created CSR matrix
+num_items = dataset.interactions_shape()[1]  # Number of items
+new_user_predictions = model.predict(0, np.arange(num_items), user_features=user_features_csr, item_features=item_features)
+
+# Extract the indices of the top items based on scores
+top_items_indices = np.argsort(-new_user_predictions)[:10]
+
+# Get the IDs of the top items from the indices
+top_item_ids = products_df.iloc[top_items_indices]['id']
+
+# Fetch details for these top items from your products DataFrame
+top_items_details = products_df[products_df['id'].isin(top_item_ids)][['id', 'name']]
+
+# Output the top item details
+print("Top Recommended Items:")
+print(top_items_details)
+
+from scipy.sparse import csr_matrix
+
+# Updated user features for a female user
+features_dict = {
+    'gender_female': 1,  # Assuming the model was trained with this feature
+    'age_25': 1,
+    'location_Daegu': 1,
+    'brand_Perry_Ellis': 1
+}
+
+# Assuming the total number of features is known and indexed, update accordingly
+num_features = 100  # This should match your model's feature setup
+feature_indices = {
+    'gender_female': 1,  # Update the index as per your model's feature indexing
+    'age_25': 1,
+    'location_Daegu': 2,
+    'brand_Perry_Ellis': 3
+}
+
+# Create the feature vector based on the defined features
+feature_vector = [0] * num_features
+for feature, index in feature_indices.items():
+    if feature in features_dict:
+        feature_vector[index] = features_dict[feature]
+
+# Convert to CSR matrix
+user_features_csr = csr_matrix(feature_vector)
+
+# Load the model
+model = joblib.load('recommendation_hybrid_model.pkl')
+
+# Predicting with a manually created CSR matrix
+num_items = dataset.interactions_shape()[1]  # Number of items
+new_user_predictions = model.predict(0, np.arange(num_items), user_features=user_features_csr, item_features=item_features)
+
+# Output the predictions
+print("Predictions:", new_user_predictions)
+
+# Predicting with a manually created CSR matrix
+num_items = dataset.interactions_shape()[1]  # Number of items
+new_user_predictions = model.predict(0, np.arange(num_items), user_features=user_features_csr, item_features=item_features)
+
+# Extract the indices of the top items based on scores
+top_items_indices = np.argsort(-new_user_predictions)[:20]
+
+# Get the IDs of the top items from the indices
+top_item_ids = products_df.iloc[top_items_indices]['id']
+
+# Fetch details for these top items from your products DataFrame
+top_items_details = products_df[products_df['id'].isin(top_item_ids)][['id', 'name']]
+
+# Output the top item details
+print("Top Recommended Items:")
+print(top_items_details)

@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS products (
     product_name VARCHAR(255),
     product_category VARCHAR(255),
     product_Brand VARCHAR(255),
+    department VARCHAR(255),
     cost DECIMAL(10, 2),
     selling_price DECIMAL(10, 2),
     max_margin DECIMAL(10, 2),
