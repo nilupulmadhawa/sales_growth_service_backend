@@ -15,7 +15,7 @@ async def fetch_user_demographic(user_id: str):
         FROM users
         WHERE user_id = %s
     """
-    async with await get_db_connection() as conn:
+    async with get_db_connection() as conn:
         async with conn.cursor(aiomysql.DictCursor) as cur:
             await cur.execute(query, (user_id,))
             user_row = await cur.fetchone()
@@ -33,17 +33,16 @@ async def get_user_demographics(user_id: str):
 
 async def insert_brands(user_id: str, brands: list):
     query = "INSERT INTO brands (user_id, brand) VALUES (%s, %s)"
-    async with await get_db_connection() as conn:
+    async with get_db_connection() as conn:
         async with conn.cursor() as cur:
             for brand in brands:
                 await cur.execute(query, (user_id, brand))
             await conn.commit()
             return True
 
-
 @router.put("/demographics/update/{user_id}/")
 async def update_user_demographics(user_id: str, user_update: UserUpdate):
-    async with await get_db_connection() as conn:
+    async with get_db_connection() as conn:
         async with conn.cursor() as cur:
             # Check if the user already exists
             await cur.execute("SELECT COUNT(*) FROM users WHERE user_id = %s", (user_id,))
@@ -61,6 +60,3 @@ async def update_user_demographics(user_id: str, user_update: UserUpdate):
             await conn.commit()
             
     return {"message": "User and brands updated successfully"}
-
-
-

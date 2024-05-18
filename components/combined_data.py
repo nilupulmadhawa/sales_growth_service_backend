@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 import aiomysql
 from typing import List
 import pytz
+from datetime import datetime
 
 from models import UserProductPreference, Product
 
@@ -9,7 +10,6 @@ from models import UserProductPreference, Product
 from .database import get_db_connection
 
 router = APIRouter()
-
 
 async def fetch_combined_data(start_date: str = None, end_date: str = None):
     query = """
@@ -34,7 +34,7 @@ async def fetch_combined_data(start_date: str = None, end_date: str = None):
         end_date = end_date + "T23:59:59"
 
         # Convert start_date and end_date to the appropriate time zone
-        timezone = pytz.timezone('Your_Time_Zone')  # Replace 'Your_Time_Zone' with the appropriate time zone
+        timezone = pytz.timezone('Asia/Colombo') 
         start_date = timezone.localize(datetime.fromisoformat(start_date)).astimezone(pytz.UTC)
         end_date = timezone.localize(datetime.fromisoformat(end_date)).astimezone(pytz.UTC)
 
@@ -42,28 +42,27 @@ async def fetch_combined_data(start_date: str = None, end_date: str = None):
         query += " WHERE e.event_time BETWEEN %s AND %s"
         query_params.extend([start_date, end_date])
 
-    async with await get_db_connection() as conn:
+    async with get_db_connection() as conn:
         async with conn.cursor(aiomysql.DictCursor) as cur:
             await cur.execute(query, query_params)
             result = await cur.fetchall()
     return result
 
 @router.get("/combined-data/", response_model=List)
-async def combined_data_route():
-    data = await fetch_combined_data()
+async def combined_data_route(start_date: str = None, end_date: str = None):
+    data = await fetch_combined_data(start_date, end_date)
     return data
 
 @router.post("/user-preference/")
 async def save_user_product_preference(preference: UserProductPreference):
     query = "INSERT INTO user_preferences (user_id, product_id) VALUES (%s, %s)"
-    async with await get_db_connection() as conn:
+    async with get_db_connection() as conn:
         async with conn.cursor() as cur:
             await cur.execute(query, (preference.user_id, preference.product_id))
             await conn.commit()
     return {"message": "User preference saved successfully"}
 
-
-# get a category randomly from the database product table
+# Get a category randomly from the database product table
 @router.get("/categories/")
 async def fetch_random_category():
     query = """
@@ -72,22 +71,22 @@ async def fetch_random_category():
         ORDER BY RAND()
         LIMIT 1
     """
-    async with await get_db_connection() as conn:
+    async with get_db_connection() as conn:
         async with conn.cursor(aiomysql.DictCursor) as cur:
             await cur.execute(query)
             category = await cur.fetchone()
-            return category['category']
+            return category['product_category']
 
 @router.get("/products/{category}/", response_model=List[Product])
 async def fetch_random_products_by_category(category: str):
     query = """
-        SELECT id, name, category, image_url
+        SELECT id, product_name, product_category, product_Brand
         FROM products
-        WHERE category = %s
+        WHERE product_category = %s
         ORDER BY RAND()
         LIMIT 3
     """
-    async with await get_db_connection() as conn:
+    async with get_db_connection() as conn:
         async with conn.cursor(aiomysql.DictCursor) as cur:
             await cur.execute(query, (category,))
             products = await cur.fetchall()

@@ -19,8 +19,9 @@ class Metrics(BaseModel):
 
 class Event(BaseModel):
     user_id: int
-    product_id: int
     event_type: str
+    event_time: datetime
+    uri: Optional[str] = None
 
 class CombinedData(BaseModel):
     product_name: str

@@ -89,3 +89,20 @@ CREATE TABLE IF NOT EXISTS sales (
     order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- inventory items
+CREATE TABLE IF NOT EXISTS inventory_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    product_id VARCHAR(255) NULL,
+    product_name VARCHAR(255) NULL,
+    product_category VARCHAR(255) NULL,
+    product_Brand VARCHAR(255) NULL,
+    cost DECIMAL(10, 2) NULL,
+    product_retail_price DECIMAL(10, 2) NULL,
+    product_department VARCHAR(255) NULL,
+    product_sku VARCHAR(255) NULL,
+    product_distribution_center_id INTEGER NULL,
+    sold_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+);
