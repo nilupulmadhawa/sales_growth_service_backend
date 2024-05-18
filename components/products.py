@@ -24,6 +24,7 @@ class ProductBase(BaseModel):
     selling_price: float = Field(..., gt=0)
     max_margin: float
     min_margin: float
+    department: str
 
 class ProductCreate(ProductBase):
     pass  # All fields are required
@@ -37,6 +38,7 @@ class ProductUpdate(ProductBase):
     selling_price: float | None = None
     max_margin: float | None = None
     min_margin: float | None = None
+    department: str | None = None
 
 class Product(ProductBase):
     id: int
@@ -61,23 +63,23 @@ class ProductListResponse(BaseModel):
 
 
 async def get_product_by_id(product_id: int) -> Optional[Product]:
-    async with await get_db_connection() as conn:
-        async with conn.cursor() as cursor:
-            await cursor.execute("SELECT * FROM products WHERE id = %s", (product_id))
-            product_dict = await cursor.fetchone()
-            await cursor.close()
+    async with get_db_connection() as conn:
+        async with conn.cursor(aiomysql.DictCursor) as cusr:
+            await cusr.execute("SELECT * FROM products WHERE product_id = %s", (product_id))
+            product_dict = await cusr.fetchone()
+            await cusr.close()
             return product_dict if product_dict else None
 
 async def create_product(product: ProductCreate) -> Product:
     async with await get_db_connection() as conn:
-        async with conn.cursor() as cursor:
-            await cursor.execute(
+        async with conn.cursor(aiomysql.DictCursor) as cusr:
+            await cusr.execute(
                 "INSERT INTO products (product_id, product_name, product_category, product_brand, selling_price, cost, max_margin, min_margin,department) VALUES (%s, %s, %s, %s, %s, %s, %s)",
                 (product.product_id, product.product_name, product.product_category, product.product_brand, product.selling_price, product.cost, product.max_margin, product.min_margin)
             )
-            last_row_id = cursor.lastrowid
+            last_row_id = cusr.lastrowid
             await conn.commit()
-            await cursor.close()
+            await cusr.close()
             return await get_product_by_id(last_row_id)
 
 
@@ -92,20 +94,22 @@ async def get_all_products() -> ProductListResponse:
 
 
 async def update_product(product_id: int, product: ProductUpdate) -> Product:
-    async with await get_db_connection() as conn:
-        current_product = await get_product_by_id(product_id)
-        if not current_product:
-            raise HTTPException(status_code=404, detail="Product not found")
+    async with get_db_connection() as conn:
+        async with conn.cursor(aiomysql.DictCursor) as cusr:
+            current_product = await get_product_by_id(product_id)
+            if not current_product:
+                raise HTTPException(status_code=404, detail="Product not found")
 
-        update_data = product.dict(exclude_unset=True)  # Only update provided fields 
-        update_query = ", ".join([f"{field} = %s" for field in update_data])
-        async with conn.cursor() as cursor:
-            await cursor.execute(
-            f"UPDATE products SET {update_query} WHERE id = %s",
-            (*update_data.values(), product_id)
-            )
-            await conn.commit()
-            return await get_product_by_id(product_id)
+            update_data = product.dict(exclude_unset=True)  # Only update provided fields 
+            update_query = ", ".join([f"{field} = %s" for field in update_data])
+            async with conn.cursor(aiomysql.DictCursor) as cusr:
+                aa = await cusr.execute(
+                f"UPDATE products SET {update_query} WHERE product_id = %s",
+                (*update_data.values(), product_id)
+                )
+                print(aa)
+                await conn.commit()
+                return await get_product_by_id(product_id)
 
 async def delete_product(product_id: int) -> None:
     async with await get_db_connection() as conn:
@@ -113,7 +117,7 @@ async def delete_product(product_id: int) -> None:
         if not current_product:
             raise HTTPException(status_code=404, detail="Product not found")
 
-        await conn.cursor().execute("DELETE FROM products WHERE id = %s", (product_id))
+        await conn.cursor(aiomysql.DictCursor).execute("DELETE FROM products WHERE product_id = %s", (product_id))
         await conn.commit()
 
 # --- API Endpoints --- 
