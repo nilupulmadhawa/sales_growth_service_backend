@@ -77,9 +77,9 @@ async def get_user_demo_details(user_id: str):
 def create_feature_vector(user_demo_details):
     feature_vector = [0] * num_features
     for detail in user_demo_details:
-        age, gender, location, brand = detail
+        age, gender, location, brand = detail[0], detail[1], detail[2], detail[3]
         age_feature = f'age_{age}'
-        gender_feature = f'gender_{gender.lower()}'
+        gender_feature = 'gender_male' if gender.lower() == 'm' else 'gender_female'
         location_feature = f'location_{location}'
         brand_feature = f'brand_{brand}'
         
