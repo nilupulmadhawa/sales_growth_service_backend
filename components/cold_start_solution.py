@@ -20,9 +20,15 @@ model = joblib.load('recommendation-model/recommendation_hybrid_model.pkl')
 # Define the feature indices and total number of features
 feature_indices = {
     'gender_male': 0,
-    'age_25': 1,
-    'location_Daegu': 2,
-    'brand_Perry_Ellis': 3
+    'gender_female': 1,
+    'age_25': 2,
+    'location_Daegu': 3,
+    'brand_Nike': 4,
+    'brand_Gucci': 5,
+    'brand_Adidas': 6,
+    'brand_HUGO_BOSS': 7,
+    'brand_ZOO_YORK': 8
+    # Add other brands as needed
 }
 num_features = 100  # Ensure this matches your model's feature setup
 
@@ -158,13 +164,23 @@ async def recommend_products(user_id: str):
         user_predictions = model.predict(0, np.arange(item_features.shape[0]), user_features=user_features_csr, item_features=item_features)
         logger.info(f"New user {user_id}. Cold start predictions calculated.")
 
-    top_items_indices = np.argsort(-user_predictions)[:20]
+    top_items_indices = np.argsort(-user_predictions)[:50]  # Get top 50 items first
     top_item_ids = [item_mapping[i] for i in top_items_indices]
 
     # Filter products based on user's gender
     user_gender = 'men' if user_demo_details[0][1].lower() == 'm' else 'women'
     filtered_top_item_ids = [id for id in top_item_ids if products_df.loc[products_df['id'] == id, 'department'].values[0].lower() == user_gender]
 
-    top_items_details = [{'id': id, 'product_name': products_df.loc[products_df['id'] == id, 'product_name'].values[0]} for id in filtered_top_item_ids]
+    # Ensure user's selected brands are included
+    user_brands = set(detail[3] for detail in user_demo_details)
+    brand_items_ids = products_df[(products_df['product_Brand'].isin(user_brands)) & (products_df['department'].str.lower() == user_gender)]['id'].tolist()
+    combined_ids = list(set(filtered_top_item_ids + brand_items_ids))
+
+    # Predict items based on the combined IDs and limit to top 10
+    combined_predictions = model.predict(0, np.array(combined_ids), user_features=user_features_csr, item_features=item_features)
+    top_combined_indices = np.argsort(-combined_predictions)[:10]
+    top_combined_item_ids = [combined_ids[i] for i in top_combined_indices]
+
+    top_items_details = [{'id': id, 'product_name': products_df.loc[products_df['id'] == id, 'product_name'].values[0]} for id in top_combined_item_ids]
 
     return top_items_details
