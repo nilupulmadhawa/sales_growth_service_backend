@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS products (
     product_name VARCHAR(255),
     product_category VARCHAR(255),
     product_Brand VARCHAR(255),
+    department VARCHAR(255),
     cost DECIMAL(10, 2),
     selling_price DECIMAL(10, 2),
     max_margin DECIMAL(10, 2),
@@ -25,8 +26,8 @@ CREATE TABLE IF NOT EXISTS products (
 CREATE TABLE IF NOT EXISTS events (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id VARCHAR(255),
-    product_id INT,
-    event_type ENUM('view', 'cart', 'purchase'),
+    event_type VARCHAR(255),
+    uri VARCHAR(255),
     event_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

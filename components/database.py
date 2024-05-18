@@ -1,5 +1,5 @@
 import aiomysql
-from fastapi import FastAPI, HTTPException
+from contextlib import asynccontextmanager
 
 # Database connection details
 DB_CONFIG = {
@@ -7,12 +7,13 @@ DB_CONFIG = {
     'port': 3306,
     'user': 'root',
     'password': 'S@ndu=1996',
-    'db': 'quixellai_db'
+    'db': 'quixellai_db',
 }
 
-app = FastAPI()
-
+@asynccontextmanager
 async def get_db_connection():
-    # Establish a new database connection
     conn = await aiomysql.connect(**DB_CONFIG)
-    return conn
+    try:
+        yield conn
+    finally:
+        conn.close()
