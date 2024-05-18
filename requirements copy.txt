@@ -1,3 +1,4 @@
+absl-py==2.1.0
 aiomysql==0.2.0
 anyio==4.3.0
 astunparse==1.6.3
@@ -16,10 +17,14 @@ h11==0.14.0
 h5py==3.11.0
 httpcore==0.16.3
 httpx==0.23.2
+idna==3.7
 joblib==1.4.2
 keras==3.0.5
 libclang==18.1.1
 lightfm==1.17
+Markdown==3.6
+markdown-it-py==3.0.0
+MarkupSafe==2.1.5
 mdurl==0.1.2
 ml-dtypes==0.3.2
 namex==0.0.8
