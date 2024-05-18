@@ -107,9 +107,8 @@ async def update_product(product_id: int, product: ProductUpdate) -> Product:
                 f"UPDATE products SET {update_query} WHERE product_id = %s",
                 (*update_data.values(), product_id)
                 )
-                print(aa)
                 await conn.commit()
-                return await get_product_by_id(product_id)
+                return await get_product_by_id(product_id)  
 
 async def delete_product(product_id: int) -> None:
     async with await get_db_connection() as conn:
