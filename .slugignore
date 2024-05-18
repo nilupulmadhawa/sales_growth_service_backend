@@ -1,6 +1,5 @@
 *.md
 *.txt
-*.csv
 /tests
 /docs
 /.git
