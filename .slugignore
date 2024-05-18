@@ -1,7 +1,0 @@
-*.md
-*.txt
-/tests
-/docs
-/.git
-/.github
-/venv
