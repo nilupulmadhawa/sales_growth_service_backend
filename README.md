@@ -16,6 +16,7 @@ pip install databases[aiomysql]
 
 
 ```
+./venv/Scripts/activate
 uvicorn main:app --reload
 
 ```
