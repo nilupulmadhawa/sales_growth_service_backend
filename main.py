@@ -7,7 +7,7 @@ from components.tracking import router as tracking_router
 
 from components.price_optimization import router as price_router
 from components.products import router as products_router
-from components.products import sales_forecasting_router
+from components.sales_forecasting    import sales_forecasting_router
 
 from components.combined_data import router as combined_data_router
 from components.user_demo_data import router as user_demo_data_router
