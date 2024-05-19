@@ -74,7 +74,7 @@ def get_price_optimization(product: str, product_category: str, cost: float, dat
 
     sample_df = sample_df.reindex(columns=x.columns, fill_value=0)
     sample_df = pd.get_dummies(sample_df)
-    
+    sample_df
     prediction = model.predict(sample_df)
 
    

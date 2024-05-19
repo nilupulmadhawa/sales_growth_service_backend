@@ -62,6 +62,7 @@ class ProductResponse(BaseModel):
 
 class ProductListResponse(BaseModel):
     title: str
+    count: int 
     data: List[ProductResponse]
 
 
@@ -86,14 +87,32 @@ async def create_product(product: ProductCreate) -> Product:
             return await get_product_by_id(last_row_id)
 
 
-async def get_all_products() -> ProductListResponse:
-    product_query = "SELECT product_id, product_name, product_category, product_brand, selling_price, cost, max_margin, min_margin, department FROM products LIMIT 1000"
+async def get_all_products(page: int = 1, limit: int = 10) -> ProductListResponse:
+    offset = (page - 1) * limit
+    product_query = """
+    SELECT product_id, product_name, product_category, product_brand, selling_price, cost, max_margin, min_margin, department
+    FROM products
+    LIMIT %s OFFSET %s
+    """
+    count_query = "SELECT COUNT(*) as total FROM products"
+
     async with get_db_connection() as conn:
         async with conn.cursor(aiomysql.DictCursor) as cusr:
-            await cusr.execute(product_query)
+            # Execute the count query
+            await cusr.execute(count_query)
+            total_count = (await cusr.fetchone())['total']
+
+            # Execute the product query
+            await cusr.execute(product_query, (limit, offset))
             products = await cusr.fetchall()
             product_list = [ProductResponse(**product) for product in products]
-            return product_list
+
+            return ProductListResponse(
+                title="List of products",
+                count=total_count,
+                data=product_list
+            )
+
 
 
 async def update_product(product_id: int, product: ProductUpdate) -> Product:
@@ -132,11 +151,11 @@ async def delete_product(product_id: int) -> None:
         await conn.commit()
 
 # --- API Endpoints --- 
-@router.get("/", response_model=List)
-async def list_products():
-    product = await get_all_products()
+@router.get("/", response_model=ProductListResponse)
+async def list_products(page: int = 1, limit: int = 10):
+    product = await get_all_products(page, limit)
     if not product: 
-        raise HTTPException(status_code=404, detail="Product not found")
+        raise HTTPException(status_code=404, detail="Products not found")
     return product
 
 @router.get("/{product_id}")
