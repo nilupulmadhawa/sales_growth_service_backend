@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS products (
     cost DECIMAL(10, 2),
     selling_price DECIMAL(10, 2),
     max_margin DECIMAL(10, 2),
-    min_margin DECIMAL(10, 2)
+    min_margin DECIMAL(10, 2),
 );
 
 -- Create Events Table
@@ -106,3 +106,22 @@ CREATE TABLE IF NOT EXISTS inventory_items (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
 );
+
+
+-- Price Optimization Configuration
+CREATE TABLE IF NOT EXISTS op_configuration (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    send_report VARCHAR(255) NULL,
+    verifying_required int NULL,
+    price_update_url TEXT NULL,
+    auto_update_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP    
+); 
+
+
+ALTER TABLE products 
+ADD COLUMN is_validated BOOLEAN DEFAULT FALSE,
+ADD COLUMN optimized_price DECIMAL(10, 2) DEFAULT 0.00;
+
+
+ALTER TABLE products 
+ADD COLUMN last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP;

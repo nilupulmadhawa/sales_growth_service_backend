@@ -25,6 +25,7 @@ class ProductBase(BaseModel):
     max_margin: float
     min_margin: float
     department: str
+    optimized_price: float | None = None
 
 class ProductCreate(ProductBase):
     pass  # All fields are required
@@ -39,6 +40,7 @@ class ProductUpdate(ProductBase):
     max_margin: float | None = None
     min_margin: float | None = None
     department: str | None = None
+    optimized_price: float | None = None
 
 class Product(ProductBase):
     id: int
@@ -56,6 +58,7 @@ class ProductResponse(BaseModel):
     max_margin: Optional[float] = None
     min_margin: Optional[float] = None
     department: Optional[str] = None 
+    optimized_price: Optional[float] = None
 
 class ProductListResponse(BaseModel):
     title: str
@@ -108,7 +111,16 @@ async def update_product(product_id: int, product: ProductUpdate) -> Product:
                 (*update_data.values(), product_id)
                 )
                 await conn.commit()
+                update_price_ecommerce(product_id, product)
                 return await get_product_by_id(product_id)  
+
+async def update_price_ecommerce(product_id: int, product: ProductUpdate) -> Product:
+    async with get_db_connection() as conn:
+        async with conn.cursor(aiomysql.DictCursor) as cusr:
+            await cusr.execute("SELECT price_update_url FROM op_configuration WHERE id = 1")
+            url = await cusr.fetchone()
+            print(url)
+            
 
 async def delete_product(product_id: int) -> None:
     async with await get_db_connection() as conn:
