@@ -49,7 +49,7 @@ async def update_user_demographics(user_id: str, user_update: UserUpdate):
             (count,) = await cur.fetchone()
             if count == 0:
                 # Insert new user
-                await cur.execute("INSERT INTO users (user_id, age, gender, location) VALUES (%s, %s, %s, %s)",
+                a=await cur.execute("INSERT INTO users (user_id, age, gender, location) VALUES (%s, %s, %s, %s)",
                                   (user_id, user_update.age, user_update.gender, user_update.location))
             else:
                 # Update existing user
@@ -57,6 +57,6 @@ async def update_user_demographics(user_id: str, user_update: UserUpdate):
                                   (user_update.age, user_update.gender, user_update.location, user_id))
 
             await insert_brands(user_id, user_update.brands)
-            await conn.commit()
-            
+            a=await conn.commit()
+        print(a)
     return {"message": "User and brands updated successfully"}
