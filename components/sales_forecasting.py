@@ -25,7 +25,7 @@ class MonthlySales(BaseModel):
 
 @sales_forecasting_router.get("/monthly-sales")
 async def get_monthly_sales() -> List[Dict[str, Any]]:
-    async with await get_db_connection() as conn:
+    async with get_db_connection() as conn:
         async with conn.cursor(aiomysql.DictCursor) as cursor:
             query = """
             SELECT 
@@ -115,7 +115,7 @@ class CategorySales(BaseModel):
 # Endpoint for fetching sales by product category
 @sales_forecasting_router.get("/category-sales", response_model=List[CategorySales])
 async def get_sales_by_category() -> List[Dict[str, Any]]:
-    async with await get_db_connection() as conn:
+    async with get_db_connection() as conn:
         async with conn.cursor(aiomysql.DictCursor) as cursor:
             query = """
             SELECT 

@@ -149,7 +149,7 @@ async def recommend_products(user_id: str):
     
     user_demo_details = await get_user_demo_details(user_id)
     if not user_demo_details:
-        raise HTTPException(status_code=404, detail="User not found")
+        return []
 
     user_features_csr = create_feature_vector(user_demo_details)
     
