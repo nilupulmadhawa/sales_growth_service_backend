@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 
 router = APIRouter()
 # Router for sales forecasting
-sales_forecasting_router = APIRouter()
+# sales_forecasting_router = APIRouter()
 
 #####################################################
 # sales forcasting view
@@ -23,7 +23,7 @@ class MonthlySales(BaseModel):
     sale_month: int
     total_sales: float
 
-@sales_forecasting_router.get("/monthly-sales")
+@router.get("/monthly-sales")
 async def get_monthly_sales() -> List[Dict[str, Any]]:
     async with get_db_connection() as conn:
         async with conn.cursor(aiomysql.DictCursor) as cursor:
@@ -59,7 +59,7 @@ async def get_predictions_sales(data: Dict[str, Any]) -> float:
         else:
             raise HTTPException(status_code=response.status_code, detail=response.text)
 
-@sales_forecasting_router.get("/combined-sales")
+@router.get("/combined-sales")
 async def get_combined_sales() -> List[Dict[str, Any]]:
     # Fetch actual sales data
     actual_sales = await get_monthly_sales()
@@ -113,7 +113,7 @@ class CategorySales(BaseModel):
     total_sales: float
 
 # Endpoint for fetching sales by product category
-@sales_forecasting_router.get("/category-sales", response_model=List[CategorySales])
+@router.get("/category-sales", response_model=List[CategorySales])
 async def get_sales_by_category() -> List[Dict[str, Any]]:
     async with get_db_connection() as conn:
         async with conn.cursor(aiomysql.DictCursor) as cursor:

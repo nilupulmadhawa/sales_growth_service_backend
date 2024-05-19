@@ -55,3 +55,4 @@ urllib3==2.2.1
 uvicorn==0.22.0
 Werkzeug==3.0.3
 wrapt==1.16.0
+python-multipart==0.0.9
