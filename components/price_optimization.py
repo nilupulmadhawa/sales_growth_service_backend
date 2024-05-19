@@ -22,6 +22,7 @@ def get_price_optimization(product: str, product_category: str, cost: float, dat
     data['Order_Date'] = pd.to_datetime(data['Order_Date'], errors='coerce')
     data['Product_Category'] = data['Product_Category'].fillna('No Category')
 
+    data['id'] = 'ID' + data['id'].astype(str)
     data['maximum_profit_margin'] = maximum_profit_margin
     data['minimum_profit_margin'] = minimum_profit_margin
 
@@ -44,11 +45,11 @@ def get_price_optimization(product: str, product_category: str, cost: float, dat
 
     data['cost'] = data['Sales'] - data['Profit']
 
-    data['order_count'] = data.groupby(['Order_Date','Product'])['Quantity'].transform('sum')
+    data['order_count'] = data.groupby(['Order_Date','id'])['Quantity'].transform('sum')
     data['total_revenue_per_day'] =data['order_count'] * data['Sales']
 
 
-    new_df = data.groupby(['Order_Date','Product_Category', 'Product','Sales', 'minimum_profit_margin','maximum_profit_margin','week_of_month','month','cost']).size().reset_index(name='order_count')
+    new_df = data.groupby(['Order_Date','Product_Category', 'id','Sales', 'minimum_profit_margin','maximum_profit_margin','week_of_month','month','cost']).size().reset_index(name='order_count')
 
     # Sort the DataFrame by 'Order_Date'
     new_df.sort_values(by='Order_Date', inplace=True)
@@ -60,11 +61,11 @@ def get_price_optimization(product: str, product_category: str, cost: float, dat
     # Calculate 'demand' based on the grouped data
 
     new_df['demand'] =( new_df['average_sales_per_week_of_month'] - new_df['min'])/ ( new_df['max'] - new_df['min'])*100
-    features = ['Product', 'Product_Category', 'cost', 'week_of_month','month']
+    features = ['id', 'Product_Category', 'cost', 'week_of_month','month']
     x= new_df[features]
     x = pd.get_dummies(x)
     sample_input = {
-        'Product_'+product: 1,
+        'id_'+product: 1,
         'Product_Category_'+product_category: 1,
         'cost': cost,
         'week_of_month': week_of_month(date),
@@ -74,16 +75,15 @@ def get_price_optimization(product: str, product_category: str, cost: float, dat
 
     sample_df = sample_df.reindex(columns=x.columns, fill_value=0)
     sample_df = pd.get_dummies(sample_df)
-    
+    print(sample_df)
     prediction = model.predict(sample_df)
+    return  cost + cost * (minimum_profit_margin +((maximum_profit_margin - minimum_profit_margin )* prediction[0][0] /100))/100
 
-   
-    return  cost + cost * (maximum_profit_margin +((maximum_profit_margin - minimum_profit_margin )* prediction[0][0] /100))/100
-
-@router.post("/", response_model=float)  # More specific response 
+@router.post("/", response_model=float)  # M    ore specific response 
 def get_price_optimizations(optimize_input: OptimizeInput):
+    # print(optimize_input)
     prediction = get_price_optimization(
-        product=optimize_input.product,
+        product="ID"+optimize_input.product,
         product_category=optimize_input.product_category,
         cost=optimize_input.cost,
         date=optimize_input.date,
@@ -91,3 +91,5 @@ def get_price_optimizations(optimize_input: OptimizeInput):
         minProfitMargin=optimize_input.minProfitMargin
     )
     return prediction 
+
+
