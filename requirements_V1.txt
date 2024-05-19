@@ -11,3 +11,5 @@ lightfm==1.17
 python-dotenv==1.0.1
 pandas==2.2.2
 httpx==0.23.2
+
+# pip install python-multipart

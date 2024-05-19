@@ -50,7 +50,7 @@ async def get_user_data():
             return await cur.fetchall()
 
 async def get_product_data():
-    product_query = "SELECT id, product_category, product_Brand, department, product_name FROM products"
+    product_query = "SELECT product_id as id, product_category, product_Brand, department, product_name FROM products"
     async with get_db_connection() as conn:
         async with conn.cursor() as cur:
             await cur.execute(product_query)
@@ -108,7 +108,7 @@ async def preprocess_data():
     users_df = pd.DataFrame(user_data, columns=['id', 'age', 'gender', 'location'])
     products_df = pd.DataFrame(product_data, columns=['id', 'product_category', 'product_Brand', 'department', 'product_name'])
     events_df = pd.DataFrame(event_data, columns=['user_id', 'event_type', 'uri', 'product_id'])
-
+    products_df['id'] = products_df['id'].astype(int)  
     events_df['event_weight'] = events_df['event_type'].map(event_type_weights)
     events_df = events_df.dropna(subset=['product_id', 'user_id'])
     events_df['user_id'] = events_df['user_id'].astype(int)

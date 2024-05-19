@@ -64,3 +64,6 @@ class Product(BaseModel):
 class UserProductPreference(BaseModel):
     user_id: int
     product_id: int
+    category: str
+    product_name: str
+
