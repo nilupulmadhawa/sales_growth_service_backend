@@ -36,6 +36,7 @@ app.include_router(recommendations, prefix="/api/v1/cold-start-recommendations",
 app.include_router(tracking_router, prefix="/api/v1/tracking", tags=["Tracking"])
 app.include_router(price_router, prefix="/api/v1/optimize", tags=["Optimize"])
 app.include_router(products_router, prefix="/api/v1/products", tags=["Products"])
+app.include_router(products_router, prefix="/api/v1/config", tags=["Products"])
 app.include_router(sales_forecasting_router, prefix="/api/v1/sales-forecasting", tags=["Sales Forecasting"])
 app.include_router(promotion, prefix="/api/v1/promotion", tags=["Promotion"])
 

@@ -150,6 +150,7 @@ async def delete_product(product_id: int) -> None:
         await conn.cursor(aiomysql.DictCursor).execute("DELETE FROM products WHERE product_id = %s", (product_id))
         await conn.commit()
 
+
 # --- API Endpoints --- 
 @router.get("/", response_model=ProductListResponse)
 async def list_products(page: int = 1, limit: int = 10):
@@ -177,3 +178,64 @@ async def update_products(product_id: int, product: ProductUpdate):
 async def remove_product(product_id: int):
     await delete_product(product_id)
     return {"message": "Product deleted successfully"}
+
+
+
+
+class OpConfigUpdate(BaseModel):
+    send_report: Optional[int] = None
+    verifying_required: Optional[int] = None
+    price_update_url: Optional[str] = None
+
+class OpConfigResponse(BaseModel):
+    id: int
+    send_report: Optional[int] = None
+    verifying_required: Optional[int] = None
+    price_update_url: Optional[str] = None
+    # auto_update_date: Optional[str] = None
+
+async def get_op_configuration_by_id(config_id: int) -> Optional[Dict[str, Any]]:
+    async with get_db_connection() as conn:
+        async with conn.cursor(aiomysql.DictCursor) as cusr:
+            await cusr.execute("SELECT * FROM op_configuration WHERE id = %s", (config_id,))
+            config_dict = await cusr.fetchone()
+            return config_dict if config_dict else None
+
+async def update_op_configuration(config_id: int, config: OpConfigUpdate) -> Dict[str, Any]:
+    async with get_db_connection() as conn:
+        async with conn.cursor(aiomysql.DictCursor) as cusr:
+            current_config = await get_op_configuration_by_id(config_id)
+            if not current_config:
+                raise HTTPException(status_code=404, detail="Configuration not found")
+
+            update_data = config.dict(exclude_unset=True)
+            update_query = ", ".join([f"{field} = %s" for field in update_data])
+            await cusr.execute(
+                f"UPDATE op_configuration SET {update_query} WHERE id = %s",
+                (*update_data.values(), config_id)
+            )
+            await conn.commit()
+            return await get_op_configuration_by_id(config_id)
+        
+async def get_op_configuration_by_id(config_id: int) -> Optional[OpConfigResponse]:
+    async with get_db_connection() as conn:
+        async with conn.cursor(aiomysql.DictCursor) as cusr:
+            await cusr.execute("SELECT * FROM op_configuration WHERE id = %s", (config_id,))
+            config_dict = await cusr.fetchone()
+            if config_dict:
+                return OpConfigResponse(**config_dict)
+            return None
+        
+@router.get("/op_configuration/{config_id}", response_model=OpConfigResponse)
+async def get_op_configuration_endpoint(config_id: int):
+    config = await get_op_configuration_by_id(config_id)
+    if not config:
+        raise HTTPException(status_code=404, detail="Configuration not found")
+    return config
+
+@router.put("/op_configuration/{config_id}", response_model=Dict[str, Any])
+async def update_op_configuration_endpoint(config_id: int, config: OpConfigUpdate):
+    updated_config = await update_op_configuration(config_id, config)
+    if not updated_config:
+        raise HTTPException(status_code=404, detail="Configuration not found")
+    return {"message": "Configuration updated successfully", "data": updated_config}
