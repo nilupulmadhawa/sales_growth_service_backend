@@ -12,5 +12,5 @@ python-dotenv==1.0.1
 pandas==2.2.2
 httpx==0.23.2
 python-multipart==0.0.9
-
+aiohttp==3.9.5
 # pip install python-multipart

@@ -125,3 +125,9 @@ ADD COLUMN optimized_price DECIMAL(10, 2) DEFAULT 0.00;
 
 ALTER TABLE products 
 ADD COLUMN last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE op_configuration 
+ADD COLUMN auto_update int DEFAULT 0;
+
+ALTER TABLE op_configuration 
+ADD COLUMN email TEXT DEFAULT 0;
