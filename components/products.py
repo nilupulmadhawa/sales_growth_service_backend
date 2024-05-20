@@ -10,6 +10,15 @@ import json
 import numpy as np
 from decimal import Decimal
 from datetime import datetime, timedelta
+import aiohttp
+import asyncio
+from dotenv import load_dotenv
+load_dotenv()
+import os
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from typing import List, Dict, Any
 
 router = APIRouter()
 
@@ -24,11 +33,20 @@ class ProductBase(BaseModel):
     selling_price: float = Field(..., gt=0)
     max_margin: float
     min_margin: float
-    department: str
-    optimized_price: float | None = None
+    department: Optional[str] | None = None
+    optimized_price: Optional[float]  | None = None
 
-class ProductCreate(ProductBase):
-    pass  # All fields are required
+class ProductCreate(ProductBase): 
+    product_id: str | None = None
+    product_name: str | None = None
+    product_category: str | None = None
+    product_brand: str | None = None
+    cost: float | None = None
+    selling_price: float | None = None
+    max_margin: float | None = None
+    min_margin: float | None = None
+    department: Optional[str] | None = None
+    optimized_price: Optional[float]  | None = None
 
 class ProductUpdate(ProductBase):
     product_id: str | None = None
@@ -75,17 +93,14 @@ async def get_product_by_id(product_id: int) -> Optional[Product]:
             return product_dict if product_dict else None
 
 async def create_product(product: ProductCreate) -> Product:
-    async with await get_db_connection() as conn:
+    async with get_db_connection() as conn:
         async with conn.cursor(aiomysql.DictCursor) as cusr:
             await cusr.execute(
-                "INSERT INTO products (product_id, product_name, product_category, product_brand, selling_price, cost, max_margin, min_margin,department) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                (product.product_id, product.product_name, product.product_category, product.product_brand, product.selling_price, product.cost, product.max_margin, product.min_margin)
+                "INSERT INTO products (product_id, product_name, product_category, product_brand, selling_price, cost, max_margin, min_margin, department) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                (product.product_id, product.product_name, product.product_category, product.product_brand, product.selling_price, product.cost, product.max_margin, product.min_margin, product.department)
             )
-            last_row_id = cusr.lastrowid
             await conn.commit()
-            await cusr.close()
-            return await get_product_by_id(last_row_id)
-
+            return await get_product_by_id(product.product_id)
 
 async def get_all_products(page: int = 1, limit: int = 10) -> ProductListResponse:
     offset = (page - 1) * limit
@@ -114,7 +129,6 @@ async def get_all_products(page: int = 1, limit: int = 10) -> ProductListRespons
             )
 
 
-
 async def update_product(product_id: int, product: ProductUpdate) -> Product:
     async with get_db_connection() as conn:
         async with conn.cursor(aiomysql.DictCursor) as cusr:
@@ -122,24 +136,39 @@ async def update_product(product_id: int, product: ProductUpdate) -> Product:
             if not current_product:
                 raise HTTPException(status_code=404, detail="Product not found")
 
-            update_data = product.dict(exclude_unset=True)  # Only update provided fields 
+            old_selling_price = current_product['selling_price']
+            new_selling_price = product.selling_price if product.selling_price is not None else old_selling_price
+
+            update_data = product.dict(exclude_unset=True)
             update_query = ", ".join([f"{field} = %s" for field in update_data])
-            async with conn.cursor(aiomysql.DictCursor) as cusr:
-                aa = await cusr.execute(
+            await cusr.execute(
                 f"UPDATE products SET {update_query} WHERE product_id = %s",
                 (*update_data.values(), product_id)
-                )
-                await conn.commit()
-                update_price_ecommerce(product_id, product)
-                return await get_product_by_id(product_id)  
-
-async def update_price_ecommerce(product_id: int, product: ProductUpdate) -> Product:
-    async with get_db_connection() as conn:
-        async with conn.cursor(aiomysql.DictCursor) as cusr:
+            )
             await cusr.execute("SELECT price_update_url FROM op_configuration WHERE id = 1")
-            url = await cusr.fetchone()
-            print(url)
+            config = await cusr.fetchone()
+            if not config or not config['price_update_url']:
+                raise HTTPException(status_code=404, detail="Price update URL not configured")
             
+            price_update_url = config['price_update_url']
+
+            if old_selling_price != new_selling_price:
+                await cusr.execute(
+                    "INSERT INTO price_update_log (product_id, old_selling_price, new_selling_price) VALUES (%s, %s, %s)",
+                    (product_id, old_selling_price, new_selling_price)
+                )
+            async with aiohttp.ClientSession() as session:
+                # Make the HTTP request to price_update_url
+                payload = {
+                    "product_id": product_id,
+                    "price": new_selling_price
+                }
+                async with session.post(price_update_url, json=payload) as response:
+                    if response.status != 200:
+                        raise HTTPException(status_code=response.status, detail=f"Failed to update price for product {product['product_id']}")
+            await conn.commit()
+            return await get_product_by_id(product_id)
+
 
 async def delete_product(product_id: int) -> None:
     async with await get_db_connection() as conn:
@@ -185,13 +214,17 @@ async def remove_product(product_id: int):
 class OpConfigUpdate(BaseModel):
     send_report: Optional[int] = None
     verifying_required: Optional[int] = None
+    auto_update: Optional[int] = None
     price_update_url: Optional[str] = None
+    email: Optional[str] = None
 
 class OpConfigResponse(BaseModel):
     id: int
     send_report: Optional[int] = None
     verifying_required: Optional[int] = None
+    auto_update: Optional[int] = None
     price_update_url: Optional[str] = None
+    email: Optional[str] = None
     # auto_update_date: Optional[str] = None
 
 async def get_op_configuration_by_id(config_id: int) -> Optional[Dict[str, Any]]:
@@ -239,3 +272,123 @@ async def update_op_configuration_endpoint(config_id: int, config: OpConfigUpdat
     if not updated_config:
         raise HTTPException(status_code=404, detail="Configuration not found")
     return {"message": "Configuration updated successfully", "data": updated_config}
+
+
+@router.post("/validate_and_update_prices")
+async def validate_and_update_prices():
+    async with get_db_connection() as conn:
+        async with conn.cursor(aiomysql.DictCursor) as cusr:
+            await cusr.execute("SELECT id, product_id, selling_price, optimized_price FROM products WHERE is_validated = FALSE")
+            products = await cusr.fetchall()
+
+            await cusr.execute("SELECT price_update_url FROM op_configuration WHERE id = 1")
+            config = await cusr.fetchone()
+            if not config or not config['price_update_url']:
+                raise HTTPException(status_code=404, detail="Price update URL not configured")
+            
+            price_update_url = config['price_update_url']
+
+            async with aiohttp.ClientSession() as session:
+                for product in products:
+                    if product['optimized_price'] != product['selling_price']:
+                        await cusr.execute("""
+                            UPDATE products
+                            SET is_validated = TRUE, optimized_price = %s
+                            WHERE id = %s
+                        """, (product['selling_price'], product['id']))
+
+                        await cusr.execute(
+                            "INSERT INTO price_update_log (product_id, old_selling_price, new_selling_price) VALUES (%s, %s, %s)",
+                            (product['product_id'], product['optimized_price'], product['selling_price'])
+                        )
+
+                        # Make the HTTP request to price_update_url
+                        payload = {
+                            "product_id": product['product_id'],
+                            "price": product['selling_price']
+                        }
+                        async with session.post(price_update_url, json=payload) as response:
+                            if response.status != 200:
+                                raise HTTPException(status_code=response.status, detail=f"Failed to update price for product {product['product_id']}")
+
+            await conn.commit()
+            return {"message": "Products validated and prices updated successfully"}
+
+
+
+@router.post("/send_price_update_log_email")
+async def send_price_update_log_email():
+    logs = await get_monthly_price_update_log()
+    async with get_db_connection() as conn:
+        async with conn.cursor(aiomysql.DictCursor) as cusr:
+            await cusr.execute("SELECT email FROM op_configuration WHERE id = 1")
+            config = await cusr.fetchone()
+            if not config or not config['email']:
+                raise HTTPException(status_code=404, detail="Email not configured")
+
+            email = config['email']
+            subject = "Monthly Price Update Log Report"
+            body = "Here is the price update log report for the current month:\n\n"
+
+            for log in logs:
+                body += f"Product ID: {log['product_id']}\n"
+                body += f"Old Selling Price: {log['old_selling_price']}\n"
+                body += f"New Selling Price: {log['new_selling_price']}\n"
+                body += f"Updated At: {log['updated_at']}\n\n"
+
+            send_email(email, subject, body)
+
+
+async def get_monthly_price_update_log() -> List[Dict[str, Any]]:
+    start_of_month = datetime.now().replace(day=1)
+    async with get_db_connection() as conn:
+        async with conn.cursor(aiomysql.DictCursor) as cusr:
+            await cusr.execute("""
+                SELECT * FROM price_update_log 
+                WHERE updated_at >= %s
+            """, (start_of_month,))
+            logs = await cusr.fetchall()
+            return logs
+
+
+def send_email(to_address: str, subject: str, body: str):
+    from_address =os.getenv("MAIL")
+    password = os.getenv("DB_HOST")
+
+    # Setup the MIME
+    message = MIMEMultipart()
+    message['From'] = from_address
+    message['To'] = to_address
+    message['Subject'] = subject
+
+    # Attach the body with the msg instance
+    message.attach(MIMEText(body, 'plain'))
+
+    # Create SMTP session for sending the mail
+    session = smtplib.SMTP(os.getenv("MAIL_HOST"), 587)  # Use your SMTP server and port
+    session.starttls()  # Enable security
+    session.login(from_address, password)  # Login with your email and password
+    text = message.as_string()
+    session.sendmail(from_address, to_address, text)
+    session.quit()
+
+async def send_price_update_log_email():
+    logs = await get_monthly_price_update_log()
+    async with get_db_connection() as conn:
+        async with conn.cursor(aiomysql.DictCursor) as cusr:
+            await cusr.execute("SELECT email FROM op_configuration WHERE id = 1")
+            config = await cusr.fetchone()
+            if not config or not config['email']:
+                raise HTTPException(status_code=404, detail="Email not configured")
+
+            email = config['email']
+            subject = "Monthly Price Update Log Report"
+            body = "Here is the price update log report for the current month:\n\n"
+
+            for log in logs:
+                body += f"Product ID: {log['product_id']}\n"
+                body += f"Old Selling Price: {log['old_selling_price']}\n"
+                body += f"New Selling Price: {log['new_selling_price']}\n"
+                body += f"Updated At: {log['updated_at']}\n\n"
+
+            send_email(email, subject, body)
