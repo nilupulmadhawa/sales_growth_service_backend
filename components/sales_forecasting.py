@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Body
+from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import List, Optional, Dict, Any
 import aiomysql
 from pydantic import BaseModel, Field 
@@ -10,10 +10,32 @@ import json
 import numpy as np
 from decimal import Decimal
 from datetime import datetime, timedelta
+import pandas as pd
+from statsmodels.tsa.seasonal import seasonal_decompose
+
 
 router = APIRouter()
 # Router for sales forecasting
 # sales_forecasting_router = APIRouter()
+
+# Function to fetch sales data from the database
+async def fetch_sales_data() -> pd.DataFrame:
+    async with get_db_connection() as conn:
+        async with conn.cursor(aiomysql.DictCursor) as cursor:
+            query = """
+            SELECT 
+                order_date AS date,
+                amount AS sales
+            FROM 
+                sales
+            """
+            await cursor.execute(query)
+            result = await cursor.fetchall()
+            # Convert to DataFrame
+            df = pd.DataFrame(result)
+            df['date'] = pd.to_datetime(df['date'])
+            df.set_index('date', inplace=True)
+            return df
 
 #####################################################
 # sales forcasting view
@@ -138,3 +160,80 @@ async def get_sales_by_category() -> List[Dict[str, Any]]:
             ]
             return formatted_result
 ########################################
+
+@router.get("/sales-trend")
+async def get_sales_trend(start_date: str, end_date: str) -> Dict[str, Any]:
+    df = await fetch_sales_data()
+    filtered_df = df[(df.index >= start_date) & (df.index <= end_date)]
+    daily_sales = filtered_df.resample('D').sum().reset_index()
+    data = {
+        "dates": daily_sales['date'].dt.strftime('%Y-%m-%d').tolist(),
+        "sales": daily_sales['sales'].tolist()
+    }
+    return data
+
+class SeasonalDecomposeResponse(BaseModel):
+    date: List[str]
+    sales: List[Optional[float]]
+    seasonal: List[Optional[float]]
+    trend: List[Optional[float]]
+    resid: List[Optional[float]]
+
+def clean_series(series):
+    cleaned_series = series.replace([pd.NA, pd.NaT, np.nan, np.inf, -np.inf], None)
+    return cleaned_series.where(cleaned_series.notnull(), None).tolist()
+
+@router.get("/seasonal-decompose", response_model=SeasonalDecomposeResponse)
+async def get_seasonal_decompose(period: int = 4, year: int = Query(...), week: int = Query(...)) -> SeasonalDecomposeResponse:
+    # Adjust the query to fetch data for two weeks
+    query = """
+    SELECT 
+        DATE(order_date) AS date,
+        SUM(amount) AS total_sales
+    FROM 
+        sales
+    WHERE 
+        YEAR(order_date) = %s AND WEEK(order_date, 1) IN (%s, %s)
+    GROUP BY 
+        date
+    ORDER BY 
+        date;
+    """
+    
+    # Calculate the next week
+    next_week = week + 1
+    
+    async with get_db_connection() as conn:
+        async with conn.cursor(aiomysql.DictCursor) as cursor:
+            await cursor.execute(query, (year, week, next_week))
+            result = await cursor.fetchall()
+
+            if not result:
+                raise HTTPException(status_code=404, detail="No sales data found")
+
+            df = pd.DataFrame(result)
+            df['date'] = pd.to_datetime(df['date'])
+            df.set_index('date', inplace=True)
+            
+            if 'total_sales' not in df.columns or df['total_sales'].isnull().all():
+                raise HTTPException(status_code=500, detail="Invalid 'total_sales' data in the dataset")
+
+            df['total_sales'] = df['total_sales'].replace([np.nan, np.inf, -np.inf], None)
+            if df['total_sales'].isnull().all():
+                raise HTTPException(status_code=500, detail="All 'total_sales' values are invalid")
+
+            # Ensure there are enough observations for seasonal decomposition
+            if len(df) < period * 2:
+                raise HTTPException(status_code=400, detail="Insufficient data for seasonal decomposition. At least 8 observations are required.")
+
+            decomposition = seasonal_decompose(df['total_sales'], model='additive', period=period)
+
+            response = SeasonalDecomposeResponse(
+                date=df.index.strftime('%Y-%m-%d').tolist(),
+                sales=clean_series(df['total_sales']),
+                seasonal=clean_series(decomposition.seasonal),
+                trend=clean_series(decomposition.trend),
+                resid=clean_series(decomposition.resid),
+            )
+
+            return response
